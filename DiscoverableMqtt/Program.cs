@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Threading;
-using Newtonsoft.Json;
-using uPLibrary.Networking.M2Mqtt;
 
 namespace DiscoverableMqtt
 {
@@ -19,7 +16,7 @@ namespace DiscoverableMqtt
             var id = GetID(settings.Name);
             var messenger = new Messenger("192.168.1.49", id);
             messenger.Connect();
-            var probe = new FakeTempProbe()
+            var probe = new Probes.LinuxTempProbe()
             {
                 MeasureInterval = 500,
             };
@@ -28,7 +25,7 @@ namespace DiscoverableMqtt
             probe.DataChanged += (s, e) => publisher.Publish(e.Data.ToString());
 
             probe.Start();
-            System.Threading.Thread.Sleep(1000*10);
+            Thread.Sleep(1000*10);
             probe.Stop();
             messenger.Disconnect();
         }
