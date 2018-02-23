@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace DiscoverableMqtt.Probes
@@ -40,6 +41,8 @@ namespace DiscoverableMqtt.Probes
 
         public virtual float GetCurrentData() => _CurVal;
 
+        object timerLock = new object();
+
         /// <summary>
         /// Override this method to customize what happens when the timer elapses.
         /// Usually overriding <see cref="GetNewVal"/> is good enough.
@@ -48,8 +51,16 @@ namespace DiscoverableMqtt.Probes
         /// <param name="e"></param>
         protected virtual void Timer_Elapsed(object sender, EventArgs e)
         {
-            _CurVal = GetNewVal();
-            DataChanged.Invoke(this, new GenericEventArgs<float>(_CurVal));
+            lock (timerLock)
+            {
+                var prevEnabled = _Timer.Enabled;
+                _Timer.Stop();
+
+                _CurVal = GetNewVal();
+                DataChanged?.Invoke(this, new GenericEventArgs<float>(_CurVal));
+
+                _Timer.Enabled = prevEnabled;
+            }
         }
 
         /// <summary>

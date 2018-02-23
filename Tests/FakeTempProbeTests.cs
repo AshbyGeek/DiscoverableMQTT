@@ -41,19 +41,20 @@ namespace DiscoverableMqtt.Tests
         [TestMethod]
         public void FakeTempProbe_Interval()
         {
-            const int GOAL_COUNT = 5;
-            const int INTERVAL = 50;
+            const int GOAL_COUNT = 10;
+            const int INTERVAL = 75;
             int triggerCount = 0;
 
             _probe.DataChanged += (s, e) => triggerCount += 1;
             _probe.MeasureInterval = INTERVAL;
 
             _probe.Start();
-            int sleepTime = (INTERVAL * GOAL_COUNT) + INTERVAL / 2;   //time enough for N and a half intervals, so that the last interval has some time
+            int sleepTime = (INTERVAL * GOAL_COUNT);
             System.Threading.Thread.Sleep(sleepTime);
             _probe.Start();
 
-            Assert.IsTrue(triggerCount == GOAL_COUNT);
+            //Fuzzy match because of processing times and things
+            Assert.IsTrue(triggerCount >= GOAL_COUNT-1 && triggerCount <= GOAL_COUNT + 1);
         }
     }
 }

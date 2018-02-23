@@ -1,0 +1,6 @@
+72 01 4b 46 7f ff 0e 10 57 : crc=57 YES
+72 01 4b 46 7f ff 0e 10 57 t=23125
+72 01 4b 46 7f ff 0e 10 57 : crc=57 YES
+72 01 4b 46 7f ff 0e 10 57 t=23125
+b1 01 4b 46 7f ff 0f 10 8d : crc=8d YES
+b1 01 4b 46 7f ff 0f 10 8d t=27062

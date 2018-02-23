@@ -41,7 +41,7 @@ namespace DiscoverableMqtt.Probes
                 throw new Exception("Error enumerating directories OneWireDevicesPath folder", ex);
             }
 
-            var filteredFolders = folders.Where(folder => !folder.Contains("bus_master") && File.Exists(Path.Combine(OneWireDevicesPath, folder, W1_FILE_NAME)));
+            var filteredFolders = folders.Select(f => Path.GetFileName(f)).Where(folder => !folder.Contains("bus_master") && File.Exists(Path.Combine(OneWireDevicesPath, folder, W1_FILE_NAME)));
 
             return filteredFolders;
         }
@@ -58,10 +58,14 @@ namespace DiscoverableMqtt.Probes
                 {
                     var text = File.ReadAllText(FilePath);
                     var indexOfYes = text.LastIndexOf("yes", StringComparison.InvariantCultureIgnoreCase);
-                    var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes);
-                    var indexOfSecondNewline = text.IndexOf('\n', indexOfTEqualsAfterYes + 1);
+                    var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes, StringComparison.InvariantCultureIgnoreCase);
+                    var indexOfSecondNewline = text.IndexOf('\n', indexOfTEqualsAfterYes + 2);
+                    if (indexOfSecondNewline == -1)
+                    {
+                        indexOfSecondNewline = text.Length;
+                    }
 
-                    var stringVal = text.Substring(indexOfTEqualsAfterYes, indexOfSecondNewline - indexOfTEqualsAfterYes);
+                    var stringVal = text.Substring(indexOfTEqualsAfterYes+2, indexOfSecondNewline - indexOfTEqualsAfterYes-2);
                     var floatVal = FixedPointConversion(stringVal, 2);
                     var farenheit = CelciusToFarenheit(floatVal);
                     return farenheit;
@@ -76,8 +80,9 @@ namespace DiscoverableMqtt.Probes
 
         private float FixedPointConversion(string stringVal, int numFixedDigitsLeftOfDecimal)
         {
-            int intVal = int.Parse(stringVal);
-            float floatVal = intVal / (float)(10 * (stringVal.Length - numFixedDigitsLeftOfDecimal));
+            double intVal = int.Parse(stringVal);
+            double divisor = Math.Pow(10, stringVal.Length - numFixedDigitsLeftOfDecimal);
+            float floatVal = (float)(intVal / divisor);
             return floatVal;
         }
 
