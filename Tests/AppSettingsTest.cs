@@ -3,13 +3,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace MQTTExperiment.Tests
+namespace DiscoverableMqtt.Tests
 {
     [TestClass]
     public class AppSettingsTest
     {
         [TestMethod]
-        public void SaveReadSettingsTest()
+        public void AppSettings_SaveReadSettings_Works()
         {
             // Get the temp file, but make sure it is empty
             var filePath = PrepareFile();
@@ -31,7 +31,7 @@ namespace MQTTExperiment.Tests
         }
 
         [TestMethod]
-        public void PropertyChangedTest()
+        public void AppSettings_PropertyChanged_Triggers()
         {
             var propertiesChanged = new List<string>();
 
@@ -45,7 +45,7 @@ namespace MQTTExperiment.Tests
         }
 
         [TestMethod]
-        public void DefaultNameTest()
+        public void AppSettings_DefaultName_StartsWithUnNamed()
         {
             var filePath = PrepareFile();
             var settings = AppSettings.GetSettings(filePath);
@@ -53,6 +53,10 @@ namespace MQTTExperiment.Tests
         }
 
 
+        /// <summary>
+        /// Makes sure that the temporary json file doesn't exist and returns the path to it
+        /// </summary>
+        /// <returns></returns>
         private string PrepareFile()
         {
             var filePath = Path.Combine(Path.GetTempPath(), "MQTTExperiment.Tests.AppSettings.json");
