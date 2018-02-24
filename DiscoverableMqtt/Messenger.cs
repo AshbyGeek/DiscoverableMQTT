@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 using uPLibrary.Networking.M2Mqtt;
 
@@ -19,6 +20,7 @@ namespace DiscoverableMqtt
             {
                 if (_Messenger.IsConnected)
                 {
+                    content = MakePacketHeader() + content;
                     var bytes = Encoding.UTF8.GetBytes(content);
                     _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
                 }
@@ -28,8 +30,15 @@ namespace DiscoverableMqtt
             {
                 if (_Messenger.IsConnected)
                 {
-                    _Messenger._Client.Publish(Topic, content, QosLevel, Retain);
+                    var header = MakePacketHeader();
+                    var bytes = Encoding.UTF8.GetBytes(header).Concat(content).ToArray();
+                    _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
                 }
+            }
+
+            private string MakePacketHeader()
+            {
+                return $"{_Messenger.Id} {DateTime.Now:yyMMddThhmmss} ";
             }
         }
 
