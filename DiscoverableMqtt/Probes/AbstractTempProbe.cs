@@ -14,11 +14,19 @@ namespace DiscoverableMqtt.Probes
         public virtual double MeasureInterval
         {
             get => _Timer.Interval;
-            set => _Timer.Interval = value;
+            set {
+                if (value < 50)
+                {
+                    value = 50;
+                }
+                _Timer.Interval = value;
+            }
         }
 
         private Timer _Timer = new Timer() { Interval = 500 };
         private float _CurVal;
+
+        public AppSettings Settings { get; set; }
 
         public AbstractTempProbe()
         {

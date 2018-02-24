@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -15,7 +16,7 @@ namespace DiscoverableMqtt
         [JsonIgnore]
         private string FilePath { get; set; }
 
-        public string Name
+        public string Id
         {
             get => _Name;
             set
@@ -27,8 +28,79 @@ namespace DiscoverableMqtt
                 }
             }
         }
-        private string _Name = $"UnNamed-{Guid.NewGuid()}";
+        private string _Name = "";
+
+        public string BrokerUrl
+        {
+            get => _BrokerUrl;
+            set
+            {
+                if (_BrokerUrl != value)
+                {
+                    _BrokerUrl = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private string _BrokerUrl = "";
         
+        public bool DebugMode
+        {
+            get => _DebugMode;
+            set
+            {
+                if (_DebugMode != value)
+                {
+                    _DebugMode = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private bool _DebugMode = false;
+
+        public string ProbeDeviceName
+        {
+            get => _ProbeDeviceName;
+            set
+            {
+                if (_ProbeDeviceName != value)
+                {
+                    _ProbeDeviceName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private string _ProbeDeviceName = "";
+
+        public int ProbeInterval
+        {
+            get => _ProbeInterval;
+            set
+            {
+                if (_ProbeInterval != value)
+                {
+                    _ProbeInterval = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private int _ProbeInterval = 500;
+
+        public string ProbeTopic
+        {
+            get => _ProbeTopic;
+            set
+            {
+                if (_ProbeTopic != value)
+                {
+                    _ProbeTopic = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private string _ProbeTopic = "test/Linux";
+
+
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             SaveSettings();
@@ -49,6 +121,21 @@ namespace DiscoverableMqtt
             }
         }
 
+        public void ResetToDefualts()
+        {
+            var otherSettings = new AppSettings();
+            foreach (var property in GetType().GetProperties())
+            {
+                if (property.GetCustomAttributes(typeof(JsonIgnoreAttribute), false).Length > 0)
+                {
+                    break;
+                }
+
+                var otherVal = property.GetValue(otherSettings);
+                property.SetValue(this, otherVal);
+            }
+        }
+
         public static AppSettings GetSettings(string filePath)
         {
             if (File.Exists(filePath))
@@ -62,14 +149,17 @@ namespace DiscoverableMqtt
                 }
                 catch (JsonException ex)
                 {
-                    Console.WriteLine($"Failed to parse appSettings file from: {filePath}");
+                    ConsoleExtensions.WriteDebugLocation($"Failed to parse appSettings file from: {filePath}");
                 }
             }
 
-            return new AppSettings()
+            var settings = new AppSettings()
             {
                 FilePath = filePath,
             };
+            settings.SaveSettings();
+
+            return settings;
         }
     }
 }

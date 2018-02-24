@@ -15,7 +15,7 @@ namespace DiscoverableMqtt.Probes
         private const string DFLT_1WIRE_DEVS_PATH = "/sys/bus/w1/devices";
 
         private const string W1_FILE_NAME = "w1_slave";
-
+        
         /// <summary>
         /// The path where this class will look for potential one wire devices to read from
         /// </summary>
@@ -57,9 +57,13 @@ namespace DiscoverableMqtt.Probes
                 try
                 {
                     var text = File.ReadAllText(FilePath);
-                    Console.WriteLine("----------------  Raw Content ----------------");
-                    Console.Write(text);
-                    Console.WriteLine("----------------------------------------------");
+
+                    if (Settings?.DebugMode ?? false)
+                    {
+                        ConsoleExtensions.WriteDebugLocation("----------------  Raw Content ----------------\n" + 
+                                                             text + "\n" +
+                                                             "----------------------------------------------");
+                    }
 
                     var indexOfYes = text.LastIndexOf("yes", StringComparison.InvariantCultureIgnoreCase);
                     var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes, StringComparison.InvariantCultureIgnoreCase);
@@ -76,7 +80,10 @@ namespace DiscoverableMqtt.Probes
                 }
                 catch
                 {
-                    System.Diagnostics.Debug.WriteLine("Failed to get a reading, using the previous reading.");
+                    if (Settings?.DebugMode ?? false)
+                    {
+                        ConsoleExtensions.WriteDebugLocation("Failed to get a reading, using the previous reading.");
+                    }
                 }
             }
             return GetCurrentData();

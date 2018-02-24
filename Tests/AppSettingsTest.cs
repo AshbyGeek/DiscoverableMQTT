@@ -16,7 +16,7 @@ namespace DiscoverableMqtt.Tests
 
             // Generate, modify, and save settings
             var settings = AppSettings.GetSettings(filePath);
-            settings.Name = "Bob";
+            settings.Id = "Bob";
             settings.SaveSettings(filePath);
 
             // Read the settings back
@@ -24,7 +24,7 @@ namespace DiscoverableMqtt.Tests
             var newSettings = AppSettings.GetSettings(filePath);
 
             // Verify our settings match
-            Assert.AreEqual(settings.Name, newSettings.Name);
+            Assert.AreEqual(settings.Id, newSettings.Id);
 
             // Clean up our temp file
             PrepareFile();
@@ -38,20 +38,11 @@ namespace DiscoverableMqtt.Tests
             var settings = new AppSettings();
             settings.PropertyChanged += (s, e) => propertiesChanged.Add(e.PropertyName);
 
-            settings.Name = "New Name";
+            settings.Id = "New Name";
 
             Assert.IsTrue(propertiesChanged.Count == 1);
-            Assert.IsTrue(propertiesChanged.Contains(nameof(settings.Name)));
+            Assert.IsTrue(propertiesChanged.Contains(nameof(settings.Id)));
         }
-
-        [TestMethod]
-        public void AppSettings_DefaultName_StartsWithUnNamed()
-        {
-            var filePath = PrepareFile();
-            var settings = AppSettings.GetSettings(filePath);
-            Assert.IsTrue(settings.Name.StartsWith("UnNamed-"));
-        }
-
 
         /// <summary>
         /// Makes sure that the temporary json file doesn't exist and returns the path to it
