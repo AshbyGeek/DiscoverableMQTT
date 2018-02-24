@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace DiscoverableMqtt
@@ -12,20 +13,36 @@ namespace DiscoverableMqtt
         static void Main(string[] args)
         {
             var settings = AppSettings.GetSettings(AppSettingsFilePath);
-
-            var id = GetID(settings.Name);
-            var messenger = new Messenger("192.168.1.49", id);
+            
+            var messenger = new Messenger("192.168.1.49", settings.Name);
             messenger.Connect();
             var probe = new Probes.LinuxTempProbe()
             {
                 MeasureInterval = 500,
             };
 
+            var deviceName = probe.GetOneWireDeviceNames().First();
+            probe.OneWireDeviceName = deviceName;
+            Console.WriteLine($"Device: {deviceName}");
+
             var publisher = messenger.GetPublisher("test/Linux", 1);
-            probe.DataChanged += (s, e) => publisher.Publish(e.Data.ToString());
+            probe.DataChanged += (s, e) =>
+            {
+                var data = e.Data.ToString();
+                publisher.Publish(data);
+                Console.WriteLine(data);
+            };
+
 
             probe.Start();
-            Thread.Sleep(1000*10);
+
+            string tmpLine = "";
+            while (!tmpLine.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Console.WriteLine("Type 'exit' to quit.");
+                 = Console.ReadLine();
+            }
+
             probe.Stop();
             messenger.Disconnect();
         }

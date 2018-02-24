@@ -29,7 +29,6 @@ namespace DiscoverableMqtt
         }
         private string _Name = $"UnNamed-{Guid.NewGuid()}";
         
-        
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             SaveSettings();

@@ -57,6 +57,10 @@ namespace DiscoverableMqtt.Probes
                 try
                 {
                     var text = File.ReadAllText(FilePath);
+                    Console.WriteLine("----------------  Raw Content ----------------");
+                    Console.Write(text);
+                    Console.WriteLine("----------------------------------------------");
+
                     var indexOfYes = text.LastIndexOf("yes", StringComparison.InvariantCultureIgnoreCase);
                     var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes, StringComparison.InvariantCultureIgnoreCase);
                     var indexOfSecondNewline = text.IndexOf('\n', indexOfTEqualsAfterYes + 2);
