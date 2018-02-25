@@ -57,13 +57,11 @@ namespace DiscoverableMqtt.Probes
                 try
                 {
                     var text = File.ReadAllText(FilePath);
-
-                    if (Settings?.DebugMode ?? false)
-                    {
-                        ConsoleExtensions.WriteDebugLocation("----------------  Raw Content ----------------\n" + 
-                                                             text + "\n" +
-                                                             "----------------------------------------------");
-                    }
+                    
+                    var dbgMsg = "----------------  Raw Content ----------------\n" +
+                                text + "\n" +
+                                "----------------------------------------------";
+                    ConsoleExtensions.WriteDebugLocation(dbgMsg, 3);
 
                     var indexOfYes = text.LastIndexOf("yes", StringComparison.InvariantCultureIgnoreCase);
                     var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes, StringComparison.InvariantCultureIgnoreCase);
@@ -82,7 +80,7 @@ namespace DiscoverableMqtt.Probes
                 {
                     if (Settings?.DebugMode ?? false)
                     {
-                        ConsoleExtensions.WriteDebugLocation("Failed to get a reading, using the previous reading.");
+                        Console.WriteLine("Failed to get a reading, using the previous reading.");
                     }
                 }
             }

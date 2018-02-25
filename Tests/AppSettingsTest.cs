@@ -15,13 +15,13 @@ namespace DiscoverableMqtt.Tests
             var filePath = PrepareFile();
 
             // Generate, modify, and save settings
-            var settings = AppSettings.GetSettings(filePath);
+            var settings = new AppSettings();
             settings.Id = "Bob";
             settings.SaveSettings(filePath);
 
             // Read the settings back
-            var fileContents = File.ReadAllText(filePath);
-            var newSettings = AppSettings.GetSettings(filePath);
+            var newSettings = new AppSettings();
+            newSettings.ReadFromFile(filePath);
 
             // Verify our settings match
             Assert.AreEqual(settings.Id, newSettings.Id);

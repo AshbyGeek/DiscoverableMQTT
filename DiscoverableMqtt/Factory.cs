@@ -13,7 +13,19 @@ namespace DiscoverableMqtt
     {
         public IMqttClientWrapper CreateMqttClientWrapper(string brokerHostName)
         {
-            return new MqttClientWrapper(brokerHostName);
+            if (!brokerHostName.Contains(@"//"))
+            {
+                brokerHostName = "mqtt://" + brokerHostName;
+            }
+            var uri = new Uri(brokerHostName);
+            if (uri.IsDefaultPort)
+            {
+                return new MqttClientWrapper(uri.Host);
+            }
+            else
+            {
+                return new MqttClientWrapper(uri.Host, uri.Port, false, null, null, uPLibrary.Networking.M2Mqtt.MqttSslProtocols.None);
+            }
         }
     }
 }
