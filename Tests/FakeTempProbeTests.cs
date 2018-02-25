@@ -32,7 +32,7 @@ namespace DiscoverableMqtt.Tests
             _probe.MeasureInterval = 10;
 
             _probe.Start();
-            System.Threading.Thread.Sleep(30);
+            System.Threading.Thread.Sleep(100);
             _probe.Stop();
 
             Assert.IsTrue(triggered);

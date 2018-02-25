@@ -11,7 +11,7 @@ namespace DiscoverableMqtt.Tests
     public class MessengerTests
     {
         public const string SERV_ADDR = "localhost";
-        public const string CLIENT_ID = "TEST_TEST_TEST";
+        public static readonly Guid CLIENT_ID = Guid.NewGuid();
 
         
         public Mock<IFactory> moqFactory;
@@ -27,8 +27,8 @@ namespace DiscoverableMqtt.Tests
             messenger = new Messenger(SERV_ADDR, CLIENT_ID);
             messenger.Factory = moqFactory.Object;
 
-            moqFactory.Setup(x => x.CreateMqttClientWrapper(It.IsAny<string>()))
-                .Returns(moqClientWrapper.Object);
+            moqFactory.Setup(x => x.CreateMqttClientWrapper(It.IsAny<string>())).Returns(moqClientWrapper.Object);
+            moqClientWrapper.Setup(x => x.IsConnected).Returns(true);
         }
 
         [TestMethod]
@@ -37,7 +37,7 @@ namespace DiscoverableMqtt.Tests
             messenger.Connect();
 
             moqFactory.Verify(x => x.CreateMqttClientWrapper(SERV_ADDR));
-            moqClientWrapper.Verify(x => x.Connect(CLIENT_ID));
+            moqClientWrapper.Verify(x => x.Connect(CLIENT_ID.ToString()));
         }
 
         [TestMethod]
@@ -59,13 +59,18 @@ namespace DiscoverableMqtt.Tests
             const string MSG = "TESTING MEssage testING. 1234";
             const int QOS_LEVEL = 1;
             byte[] msgEncoded = Encoding.UTF8.GetBytes(MSG);
-
+            
+            messenger.Id = Guid.NewGuid();
+            messenger.ServerAddress = "Not blank";
             messenger.Connect();
             var publisher = messenger.GetPublisher(TOPIC, QOS_LEVEL);
             publisher.Publish(MSG);
             publisher.Publish(msgEncoded);
 
-            moqClientWrapper.Verify(x => x.Publish(TOPIC, msgEncoded, QOS_LEVEL, false));
+            // Publish is done asynchronously with a task, wait to make sure it completes
+            System.Threading.Thread.Sleep(20);
+
+            moqClientWrapper.Verify(x => x.Publish(TOPIC, It.IsNotNull<byte[]>(), QOS_LEVEL, false));
         }
     }
 }

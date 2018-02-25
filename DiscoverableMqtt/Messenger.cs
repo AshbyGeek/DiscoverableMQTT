@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using uPLibrary.Networking.M2Mqtt;
+using System.Threading.Tasks;
 
 namespace DiscoverableMqtt
 {
     public class Messenger
     {
-        public class MessengerPublisher
+        private class MessengerPublisher : IMessengerPublisher
         {
             internal Messenger _Messenger { get; set; }
             public byte QosLevel { get; set; } = 1;
@@ -22,7 +22,17 @@ namespace DiscoverableMqtt
                 {
                     content = MakePacketHeader() + content;
                     var bytes = Encoding.UTF8.GetBytes(content);
-                    _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Failed to publish data: " + ex.Message);
+                        }
+                    });
                 }
             }
 
@@ -32,7 +42,17 @@ namespace DiscoverableMqtt
                 {
                     var header = MakePacketHeader();
                     var bytes = Encoding.UTF8.GetBytes(header).Concat(content).ToArray();
-                    _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
+                    Task.Run(() =>
+                    {
+                        try
+                        {
+                            _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Failed to publish data: " + ex.Message);
+                        }
+                    });
                 }
             }
 
@@ -42,9 +62,30 @@ namespace DiscoverableMqtt
             }
         }
 
+        private class MessengerListener
+        {
+            internal Messenger _Messenger { get; set; }
+            public string Topic
+            {
+                get => _Topic;
+                set
+                {
+
+                }
+            }
+            private string _Topic = "";
+
+        }
+
+        internal object MessengerLock = new object();
+        
+        /// <summary>
+        /// A factory to be used for producing needed components, like an MqttClientWrapper.
+        /// Probably only needed for unit tests.
+        /// </summary>
         public IFactory Factory { get; set; } = new Factory();
 
-        public string Id
+        public Guid Id
         {
             get => _Id;
             set
@@ -57,7 +98,7 @@ namespace DiscoverableMqtt
                 }
             }
         }
-        private string _Id = "";
+        private Guid _Id = Guid.NewGuid();
 
         public string ServerAddress
         {
@@ -74,18 +115,36 @@ namespace DiscoverableMqtt
         }
         private string _ServerAddress = "";
 
-        public bool IsConnected => _Client?.IsConnected ?? false;
+        public bool IsConnected
+        {
+            get
+            {
+                try
+                {
+                    return _Client?.IsConnected ?? false;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Exception while querying Mqtt about connection status : {ex.Message}");
+                    return false;
+                }
+            }
+        }
 
 
         private IMqttClientWrapper _Client { get; set; }
 
-        public Messenger(string serverAddress, string id)
+        #region  Constructors
+        public Messenger() { }
+
+        public Messenger(string serverAddress, Guid id)
         {
             Id = id;
             ServerAddress = serverAddress;
         }
+        #endregion
 
-        public MessengerPublisher GetPublisher(string topic, byte qosLevel = 2)
+        public IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1)
         {
             return new MessengerPublisher()
             {
@@ -95,16 +154,29 @@ namespace DiscoverableMqtt
             };
         }
 
+        public void PrintDebugInfo()
+        {
+            ConsoleExtensions.WriteDebugLocation($"Connected to broker: {IsConnected}", 1);
+        }
+
         public void Connect()
         {
-            if (!String.IsNullOrEmpty(ServerAddress) && !string.IsNullOrEmpty(Id))
+            if (!String.IsNullOrEmpty(ServerAddress))
             {
                 _Client = Factory.CreateMqttClientWrapper(ServerAddress);
-                //_Client.MqttMsgPublishReceived += Client_MqttMsgPublishReceived;
-                //_Client.MqttMsgSubscribed += Client_MqttMsgSubscribed;
-                //_Client.MqttMsgUnsubscribed += Client_MqttMsgUnsubscribed;
-
-                _Client.Connect(Id);
+                Task.Run(() =>
+                {
+                    try
+                    {
+                        _Client.Connect(Id.ToString());
+                        Console.WriteLine("Successfully connected to the broker.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"Failed to connect to broker: {ex.Message}");
+                    }
+                    PrintDebugInfo();
+                });
             }
         }
 
@@ -113,10 +185,8 @@ namespace DiscoverableMqtt
             if (IsConnected)
             {
                 _Client.Disconnect();
+                Console.WriteLine("Successfully disconnected from the broker.");
             }
-            //_Client.MqttMsgPublishReceived -= Client_MqttMsgPublishReceived;
-            //_Client.MqttMsgSubscribed -= Client_MqttMsgSubscribed;
-            //_Client.MqttMsgUnsubscribed -= Client_MqttMsgUnsubscribed;
         }
     }
 }

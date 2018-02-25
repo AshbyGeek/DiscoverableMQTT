@@ -11,35 +11,38 @@ namespace DiscoverableMqtt
 {
     class Program
     {
-        private static string AppSettingsFilePath => Path.Combine(Directory.GetCurrentDirectory(), "appSettings.json");
+        private static string AppSettingsFilePath { get; set; } = Path.Combine(Directory.GetCurrentDirectory(), "appSettings.json");
 
         static void Main(string[] args)
         {
-            Console.WriteLine($"Getting AppSettings from: {AppSettingsFilePath}");
-            var settings = AppSettings.GetSettings(AppSettingsFilePath);
-
-            // Initialize a unique name if we don't already have one
-            if (string.IsNullOrEmpty(settings.Id))
+            var settings = new AppSettings()
             {
-                settings.Id = Guid.NewGuid().ToString();
-            }
+                FilePath = AppSettingsFilePath
+            };
 
-            var messenger = new Messenger(settings.BrokerUrl, settings.Id);
+            // Set up bindings
+            var messenger = new Messenger();
             settings.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(settings.BrokerUrl))
                 {
                     messenger.ServerAddress = settings.BrokerUrl;
+                    Console.WriteLine($"Broker Address set to: {messenger.ServerAddress}");
+                }
+                if (e.PropertyName == nameof(settings.Id))
+                {
+                    messenger.Id = settings.Id;
+                    Console.WriteLine($"Messenger ID set to: {messenger.Id}");
                 }
             };
             
-            
-            var publisher = messenger.GetPublisher(settings.ProbeTopic, 1);
+            var publisher = messenger.GetPublisher();
             settings.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(settings.ProbeTopic))
                 {
                     publisher.Topic = settings.ProbeTopic;
+                    Console.WriteLine($"Publisher Topic set to: {publisher.Topic}");
                 }
             };
 
@@ -48,39 +51,31 @@ namespace DiscoverableMqtt
             {
                 var data = e.Data.ToString();
                 publisher.Publish(data);
-                if (settings.DebugMode)
-                {
-                    ConsoleExtensions.WriteDebugLocation(data);
-                }
+                ConsoleExtensions.WriteDebugLocation(data, 0);
+                messenger.PrintDebugInfo();
             };
 
-            if (settings.DebugMode)
-            {
-                SetDebugModeDisplaySettings();
-            }
             settings.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(settings.DebugMode))
                 {
-                    if (settings.DebugMode)
-                    {
-                        SetDebugModeDisplaySettings();
-                    }
+                    ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
+                    Console.WriteLine($"Debug option set to: {settings.DebugMode.ToString()}");
                 }
             };
 
+            // Populate the settings (which should trigger a whole bunch of changes above)
+            settings.ReadFromFile();
 
+            // Start the probe
             probe.Start();
 
+            // Read user input
             var properties = settings.GetType().GetProperties();
             while (true)
             {
+                Console.Write(">");
                 var tmpLine = Console.ReadLine();
-                if (settings.DebugMode)
-                {
-                    Console.Clear();
-                    Console.SetCursorPosition(0, Console.WindowHeight - 2);
-                }
 
                 if (tmpLine.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -93,63 +88,53 @@ namespace DiscoverableMqtt
                 else if (tmpLine.Equals("clear", StringComparison.InvariantCultureIgnoreCase))
                 {
                     Console.Clear();
-                    Console.SetCursorPosition(0, Console.WindowHeight-1);
                 }
                 else if (tmpLine.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
                 {
                     Console.WriteLine("Please confirm this action by typing 'yes please'");
                     if (Console.ReadLine() == "yes please")
                     {
-                        settings.ResetToDefualts();
+                        settings.ResetToDefaults();
                     }
                 }
-
-
-                ReadProperty(settings, tmpLine);
+                else if (tmpLine.StartsWith("msg: "))
+                {
+                    var msg = tmpLine.Substring(4).Trim();
+                    publisher.Publish(msg);
+                }
+                else if (!ReadProperty(settings, tmpLine))
+                {
+                    Console.WriteLine("Unrecognized command");
+                }
             }
 
             probe.Stop();
             messenger.Disconnect();
         }
-
-        private static void SetDebugModeDisplaySettings()
-        {
-            Console.SetWindowPosition(0, 0);
-            Console.BufferHeight = Console.WindowHeight;
-            Console.BufferWidth = Console.WindowWidth;
-            Console.Clear();
-            Console.SetCursorPosition(0, Console.WindowHeight - 1);
-        }
-
+        
         private static PropertyInfo[] AppSettingsProperties = typeof(AppSettings).GetProperties();
 
         private static void PrintOptions(AppSettings settings)
         {
             Console.WriteLine("Main commands: ");
-            Console.WriteLine("\tClear - Clears the console screen");
-            Console.WriteLine("\tHelp - Displays this menu");
-            Console.WriteLine("\tExit - Exits the programe");
+            Console.WriteLine("  Msg: <blah> - sends a message to the broker (if connected)");
+            Console.WriteLine("  Clear - Clears the console screen");
+            Console.WriteLine("  Help - Displays this menu");
+            Console.WriteLine("  Exit - Exits the programe");
 
             Console.WriteLine("\n\nOptions: ");
-            foreach(var property in AppSettingsProperties)
-            {
-                Console.WriteLine($"\t{property.Name}: {property.PropertyType.ToString()}");
-            }
-            if (settings.DebugMode)
-            {
-                Console.WriteLine("\n");
-            }
+            Console.WriteLine(settings.Json);
         }
 
-        private static void ReadProperty(AppSettings settings, string line)
+        private static bool ReadProperty(AppSettings settings, string line)
         {
             var parts = line.Split(":", 2);
             if (parts.Length != 2)
-                return;
+                return false;
 
             foreach (var property in AppSettingsProperties)
             {
-                if (parts[0].Equals(property.Name, StringComparison.InvariantCultureIgnoreCase))
+                if (parts[0].Trim().Equals(property.Name, StringComparison.InvariantCultureIgnoreCase))
                 {
                     try
                     {
@@ -165,8 +150,11 @@ namespace DiscoverableMqtt
                     {
                         Console.WriteLine($"Couldn't parse your value for {property.Name}: {ex.Message}");
                     }
+                    return true;
                 }
             }
+
+            return false;
         }
 
         private static Probes.AbstractTempProbe GetProbe(AppSettings settings)
@@ -175,7 +163,6 @@ namespace DiscoverableMqtt
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 var linuxProbe = new Probes.LinuxTempProbe();
-                linuxProbe.OneWireDeviceName = settings.ProbeDeviceName;
                 settings.PropertyChanged += (s, e) =>
                 {
                     if (e.PropertyName == nameof(settings.ProbeDeviceName))
@@ -190,7 +177,6 @@ namespace DiscoverableMqtt
                 probe = new Probes.FakeTempProbe();
             }
             
-            probe.MeasureInterval = settings.ProbeInterval;
             settings.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(settings.ProbeInterval))

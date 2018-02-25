@@ -11,24 +11,19 @@ namespace DiscoverableMqtt
 {
     public class AppSettings : INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        [JsonIgnore]
-        private string FilePath { get; set; }
-
-        public string Id
+        public Guid Id
         {
-            get => _Name;
+            get => _Id;
             set
             {
-                if (_Name != value)
+                if (_Id != value)
                 {
-                    _Name = value;
+                    _Id = value;
                     OnPropertyChanged();
                 }
             }
         }
-        private string _Name = "";
+        private Guid _Id = Guid.NewGuid();
 
         public string BrokerUrl
         {
@@ -100,11 +95,46 @@ namespace DiscoverableMqtt
         }
         private string _ProbeTopic = "test/Linux";
 
+        #region ------------------ INotifyPropertyChanged ------------------
+        public event PropertyChangedEventHandler PropertyChanged;
 
         protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {
             SaveSettings();
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        #endregion
+
+        #region ------------------ Utilities/Unsaved properties and methods ------------------
+        [JsonIgnore]
+        public string FilePath { get; set; }
+
+        [JsonIgnore]
+        public string Json
+        {
+            get
+            {
+                try
+                {
+                    return JsonConvert.SerializeObject(this, Formatting.Indented);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error generating json: {ex.Message}");
+                    return "";
+                }
+            }
+            set
+            {
+                try
+                {
+                    JsonConvert.PopulateObject(value, this);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error updating object from json: {ex.Message}");
+                }
+            }
         }
 
         public void SaveSettings(string filePath = null)
@@ -114,52 +144,38 @@ namespace DiscoverableMqtt
                 filePath = FilePath;
             }
 
-            if (filePath != null)
+            try
             {
-                string json = JsonConvert.SerializeObject(this, Formatting.Indented);
-                File.WriteAllText(filePath, json);
+                File.WriteAllText(filePath, Json);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not write file: {ex.Message}");
             }
         }
 
-        public void ResetToDefualts()
+        public void ResetToDefaults()
         {
             var otherSettings = new AppSettings();
-            foreach (var property in GetType().GetProperties())
-            {
-                if (property.GetCustomAttributes(typeof(JsonIgnoreAttribute), false).Length > 0)
-                {
-                    break;
-                }
-
-                var otherVal = property.GetValue(otherSettings);
-                property.SetValue(this, otherVal);
-            }
+            Json = otherSettings.Json;
         }
 
-        public static AppSettings GetSettings(string filePath)
+        public void ReadFromFile(string filePath = null)
         {
-            if (File.Exists(filePath))
+            if (filePath == null)
             {
-                string json = File.ReadAllText(filePath);
-                try
-                {
-                    var appSettings = JsonConvert.DeserializeObject<AppSettings>(json);
-                    appSettings.FilePath = filePath;
-                    return appSettings;
-                }
-                catch (JsonException ex)
-                {
-                    ConsoleExtensions.WriteDebugLocation($"Failed to parse appSettings file from: {filePath}");
-                }
+                filePath = FilePath;
             }
 
-            var settings = new AppSettings()
+            try
             {
-                FilePath = filePath,
-            };
-            settings.SaveSettings();
-
-            return settings;
+                Json = File.ReadAllText(filePath);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Could not populate settings from {filePath}: {ex.Message}");
+            }
         }
+        #endregion
     }
 }
