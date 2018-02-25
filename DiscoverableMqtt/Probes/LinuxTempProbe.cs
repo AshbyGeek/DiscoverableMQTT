@@ -35,15 +35,14 @@ namespace DiscoverableMqtt.Probes
             try
             {
                 folders = Directory.EnumerateDirectories(OneWireDevicesPath);
+                var filteredFolders = folders.Select(f => Path.GetFileName(f)).Where(folder => !folder.Contains("bus_master") && File.Exists(Path.Combine(OneWireDevicesPath, folder, W1_FILE_NAME)));
+                return filteredFolders;
             }
             catch (Exception ex)
             {
-                throw new Exception("Error enumerating directories OneWireDevicesPath folder", ex);
+                ConsoleExtensions.WriteLine("Error enumerating directories OneWireDevicesPath folder: " + ex);
+                return new List<string>();
             }
-
-            var filteredFolders = folders.Select(f => Path.GetFileName(f)).Where(folder => !folder.Contains("bus_master") && File.Exists(Path.Combine(OneWireDevicesPath, folder, W1_FILE_NAME)));
-
-            return filteredFolders;
         }
 
         public string OneWireDeviceName { get; set; } = "";
@@ -61,7 +60,10 @@ namespace DiscoverableMqtt.Probes
                     var dbgMsg = "----------------  Raw Content ----------------\n" +
                                 text + "\n" +
                                 "----------------------------------------------";
-                    ConsoleExtensions.WriteDebugLocation(dbgMsg, 3);
+                    if (ConsoleExtensions.WriteDebugLocationEnabled)
+                    {
+                        ConsoleExtensions.WriteLine(dbgMsg);
+                    }
 
                     var indexOfYes = text.LastIndexOf("yes", StringComparison.InvariantCultureIgnoreCase);
                     var indexOfTEqualsAfterYes = text.IndexOf("T=", indexOfYes, StringComparison.InvariantCultureIgnoreCase);
@@ -76,12 +78,9 @@ namespace DiscoverableMqtt.Probes
                     var farenheit = CelciusToFarenheit(floatVal);
                     return farenheit;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    if (Settings?.DebugMode ?? false)
-                    {
-                        Console.WriteLine("Failed to get a reading, using the previous reading.");
-                    }
+                    ConsoleExtensions.WriteLine("Failed to get a reading, using the previous reading: " + ex.Message);
                 }
             }
             return GetCurrentData();

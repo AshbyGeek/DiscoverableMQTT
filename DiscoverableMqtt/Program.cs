@@ -27,12 +27,12 @@ namespace DiscoverableMqtt
                 if (e.PropertyName == nameof(settings.BrokerUrl))
                 {
                     messenger.ServerAddress = settings.BrokerUrl;
-                    Console.WriteLine($"Broker Address set to: {messenger.ServerAddress}");
+                    ConsoleExtensions.WriteLine($"Broker Address set to: {messenger.ServerAddress}");
                 }
                 if (e.PropertyName == nameof(settings.Id))
                 {
                     messenger.Id = settings.Id;
-                    Console.WriteLine($"Messenger ID set to: {messenger.Id}");
+                    ConsoleExtensions.WriteLine($"Messenger ID set to: {messenger.Id}");
                 }
             };
             
@@ -42,7 +42,7 @@ namespace DiscoverableMqtt
                 if (e.PropertyName == nameof(settings.ProbeTopic))
                 {
                     publisher.Topic = settings.ProbeTopic;
-                    Console.WriteLine($"Publisher Topic set to: {publisher.Topic}");
+                    ConsoleExtensions.WriteLine($"Publisher Topic set to: {publisher.Topic}");
                 }
             };
 
@@ -55,12 +55,24 @@ namespace DiscoverableMqtt
                 messenger.PrintDebugInfo();
             };
 
+            if (probe is Probes.LinuxTempProbe)
+            {
+                settings.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(settings.ProbeDeviceName))
+                    {
+                        var lprobe = probe as Probes.LinuxTempProbe;
+                        lprobe.OneWireDeviceName = settings.ProbeDeviceName;
+                    }
+                };
+            }
+
             settings.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(settings.DebugMode))
                 {
                     ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
-                    Console.WriteLine($"Debug option set to: {settings.DebugMode.ToString()}");
+                    ConsoleExtensions.WriteLine($"Debug option set to: {settings.DebugMode.ToString()}");
                 }
             };
 
@@ -74,7 +86,7 @@ namespace DiscoverableMqtt
             var properties = settings.GetType().GetProperties();
             while (true)
             {
-                Console.Write(">");
+                ConsoleExtensions.Write(">");
                 var tmpLine = Console.ReadLine();
 
                 if (tmpLine.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
@@ -91,7 +103,7 @@ namespace DiscoverableMqtt
                 }
                 else if (tmpLine.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    Console.WriteLine("Please confirm this action by typing 'yes please'");
+                    ConsoleExtensions.WriteLine("Please confirm this action by typing 'yes please'");
                     if (Console.ReadLine() == "yes please")
                     {
                         settings.ResetToDefaults();
@@ -102,9 +114,26 @@ namespace DiscoverableMqtt
                     var msg = tmpLine.Substring(4).Trim();
                     publisher.Publish(msg);
                 }
+                else if (tmpLine.Equals("stop", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    probe.Stop();
+                    ConsoleExtensions.WriteDebugLocation("       ", 0);
+                }
+                else if (tmpLine.Equals("start", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    probe.Start();
+                }
+                else if (tmpLine.Equals("list probes", StringComparison.InvariantCultureIgnoreCase) && probe is Probes.LinuxTempProbe)
+                {
+                    var lprobe = probe as Probes.LinuxTempProbe;
+                    foreach(var name in lprobe.GetOneWireDeviceNames())
+                    {
+                        ConsoleExtensions.WriteLine("  " + name);
+                    }
+                }
                 else if (!ReadProperty(settings, tmpLine))
                 {
-                    Console.WriteLine("Unrecognized command");
+                    ConsoleExtensions.WriteLine("Unrecognized command");
                 }
             }
 
@@ -114,16 +143,22 @@ namespace DiscoverableMqtt
         
         private static PropertyInfo[] AppSettingsProperties = typeof(AppSettings).GetProperties();
 
-        private static void PrintOptions(AppSettings settings)
+        private static void PrintOptions(AppSettings settings, bool showLinuxProbeOptions = false)
         {
-            Console.WriteLine("Main commands: ");
-            Console.WriteLine("  Msg: <blah> - sends a message to the broker (if connected)");
-            Console.WriteLine("  Clear - Clears the console screen");
-            Console.WriteLine("  Help - Displays this menu");
-            Console.WriteLine("  Exit - Exits the programe");
+            ConsoleExtensions.WriteLine("Main commands: ");
+            ConsoleExtensions.WriteLine("  Msg: <blah> - sends a message to the broker (if connected)");
+            ConsoleExtensions.WriteLine("  Start - starts the probe if it isn't already started");
+            ConsoleExtensions.WriteLine("  Stop - stops the probe if it is running");
+            if (showLinuxProbeOptions)
+            {
+                ConsoleExtensions.WriteLine("  list probes - lists all available 1 wire probes");
+            }
+            ConsoleExtensions.WriteLine("  Clear - Clears the console screen");
+            ConsoleExtensions.WriteLine("  Help - Displays this menu");
+            ConsoleExtensions.WriteLine("  Exit - Exits the programe");
 
-            Console.WriteLine("\n\nOptions: ");
-            Console.WriteLine(settings.Json);
+            ConsoleExtensions.WriteLine("\n\nOptions: ");
+            ConsoleExtensions.WriteLine(settings.Json);
         }
 
         private static bool ReadProperty(AppSettings settings, string line)

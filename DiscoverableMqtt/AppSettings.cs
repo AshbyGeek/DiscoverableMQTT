@@ -93,7 +93,7 @@ namespace DiscoverableMqtt
                 }
             }
         }
-        private string _ProbeTopic = "test/Linux";
+        private string _ProbeTopic = "test/linux";
 
         #region ------------------ INotifyPropertyChanged ------------------
         public event PropertyChangedEventHandler PropertyChanged;
@@ -120,7 +120,7 @@ namespace DiscoverableMqtt
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error generating json: {ex.Message}");
+                    ConsoleExtensions.WriteLine($"Error generating json: {ex.Message}");
                     return "";
                 }
             }
@@ -132,7 +132,7 @@ namespace DiscoverableMqtt
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error updating object from json: {ex.Message}");
+                    ConsoleExtensions.WriteLine($"Error updating object from json: {ex.Message}");
                 }
             }
         }
@@ -150,7 +150,7 @@ namespace DiscoverableMqtt
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not write file: {ex.Message}");
+                ConsoleExtensions.WriteLine($"Could not write file: {ex.Message}");
             }
         }
 
@@ -173,7 +173,7 @@ namespace DiscoverableMqtt
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Could not populate settings from {filePath}: {ex.Message}");
+                ConsoleExtensions.WriteLine($"Could not populate settings from {filePath}: {ex.Message}");
             }
         }
         #endregion

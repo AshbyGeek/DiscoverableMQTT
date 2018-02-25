@@ -30,7 +30,7 @@ namespace DiscoverableMqtt
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("Failed to publish data: " + ex.Message);
+                            ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
                         }
                     });
                 }
@@ -50,7 +50,7 @@ namespace DiscoverableMqtt
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("Failed to publish data: " + ex.Message);
+                            ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
                         }
                     });
                 }
@@ -125,7 +125,7 @@ namespace DiscoverableMqtt
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Exception while querying Mqtt about connection status : {ex.Message}");
+                    ConsoleExtensions.WriteLine($"Exception while querying Mqtt about connection status : {ex.Message}");
                     return false;
                 }
             }
@@ -169,7 +169,7 @@ namespace DiscoverableMqtt
                     try
                     {
                         _Client.Connect(Id.ToString());
-                        Console.WriteLine("Successfully connected to the broker.");
+                        ConsoleExtensions.WriteLine("Successfully connected to the broker.");
                     }
                     catch (Exception ex)
                     {
@@ -185,7 +185,7 @@ namespace DiscoverableMqtt
             if (IsConnected)
             {
                 _Client.Disconnect();
-                Console.WriteLine("Successfully disconnected from the broker.");
+                ConsoleExtensions.WriteLine("Successfully disconnected from the broker.");
             }
         }
     }
