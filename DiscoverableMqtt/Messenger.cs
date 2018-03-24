@@ -7,76 +7,21 @@ using System.Threading.Tasks;
 
 namespace DiscoverableMqtt
 {
-    public class Messenger
+    public interface IMessenger
     {
-        private class MessengerPublisher : IMessengerPublisher
-        {
-            internal Messenger _Messenger { get; set; }
-            public byte QosLevel { get; set; } = 1;
-            public bool Retain { get; set; } = false;
-            public string Topic { get; set; }
-    
-            public void Publish(string content)
-            {
-                if (_Messenger.IsConnected)
-                {
-                    content = MakePacketHeader() + content;
-                    var bytes = Encoding.UTF8.GetBytes(content);
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
-                        }
-                        catch (Exception ex)
-                        {
-                            ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
-                        }
-                    });
-                }
-            }
+        IFactory Factory { get; set; }
+        int Id { get; set; }
+        bool IsConnected { get; }
+        string ServerAddress { get; set; }
 
-            public void Publish(byte[] content)
-            {
-                if (_Messenger.IsConnected)
-                {
-                    var header = MakePacketHeader();
-                    var bytes = Encoding.UTF8.GetBytes(header).Concat(content).ToArray();
-                    Task.Run(() =>
-                    {
-                        try
-                        {
-                            _Messenger._Client.Publish(Topic, bytes, QosLevel, Retain);
-                        }
-                        catch (Exception ex)
-                        {
-                            ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
-                        }
-                    });
-                }
-            }
+        void Connect();
+        void Disconnect();
+        IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1);
+        void PrintDebugInfo();
+    }
 
-            private string MakePacketHeader()
-            {
-                return $"{_Messenger.Id} {DateTime.Now:yyMMddThhmmss} ";
-            }
-        }
-
-        private class MessengerListener
-        {
-            internal Messenger _Messenger { get; set; }
-            public string Topic
-            {
-                get => _Topic;
-                set
-                {
-
-                }
-            }
-            private string _Topic = "";
-
-        }
-
+    public class Messenger : IMessenger
+    {
         internal object MessengerLock = new object();
         
         /// <summary>
@@ -85,7 +30,7 @@ namespace DiscoverableMqtt
         /// </summary>
         public IFactory Factory { get; set; } = new Factory();
 
-        public Guid Id
+        public int Id
         {
             get => _Id;
             set
@@ -98,7 +43,7 @@ namespace DiscoverableMqtt
                 }
             }
         }
-        private Guid _Id = Guid.NewGuid();
+        private int _Id = int.MinValue;
 
         public string ServerAddress
         {
@@ -121,7 +66,7 @@ namespace DiscoverableMqtt
             {
                 try
                 {
-                    return _Client?.IsConnected ?? false;
+                    return Client?.IsConnected ?? false;
                 }
                 catch (Exception ex)
                 {
@@ -131,13 +76,26 @@ namespace DiscoverableMqtt
             }
         }
 
-
-        private IMqttClientWrapper _Client { get; set; }
+        private IMqttClientWrapper Client
+        {
+            get => _Client;
+            set
+            {
+                if (value != _Client)
+                {
+                    _Client = value;
+                    _Publishers.ForEach(x => x.Client = _Client);
+                    _Listeners.ForEach(x => x.Client = _Client);
+                }
+            }
+        }
+        private IMqttClientWrapper _Client;
 
         #region  Constructors
         public Messenger() { }
 
-        public Messenger(string serverAddress, Guid id)
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        public Messenger(string serverAddress, int id)
         {
             Id = id;
             ServerAddress = serverAddress;
@@ -146,13 +104,26 @@ namespace DiscoverableMqtt
 
         public IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1)
         {
-            return new MessengerPublisher()
-            {
-                _Messenger = this,
-                Topic = topic,
-                QosLevel = qosLevel,
-            };
+            var messenger = Factory.CreateMessengerPublisher(_Client, _Id);
+            messenger.Topic = topic;
+            messenger.QosLevel = qosLevel;
+            _Publishers.Add(messenger);
+            messenger.Disposed += (s, e) => _Publishers.Remove(s as IMessengerPublisher);
+            return messenger;
         }
+        private List<IMessengerPublisher> _Publishers = new List<IMessengerPublisher>();
+
+        public IMessengerListener GetListener(string topic = "", byte qosLevel = 1)
+        {
+            var listener = Factory.CreateMessengerListener(Client);
+            listener.Topic = topic;
+            listener.QosLevel = qosLevel;
+
+            _Listeners.Add(listener);
+            listener.Disposed += (s, e) => _Listeners.Remove(s as IMessengerListener);
+            return listener;
+        }
+        private List<IMessengerListener> _Listeners = new List<IMessengerListener>();
 
         public void PrintDebugInfo()
         {
@@ -163,12 +134,12 @@ namespace DiscoverableMqtt
         {
             if (!String.IsNullOrEmpty(ServerAddress))
             {
-                _Client = Factory.CreateMqttClientWrapper(ServerAddress);
+                Client = Factory.CreateMqttClientWrapper(ServerAddress);
                 Task.Run(() =>
                 {
                     try
                     {
-                        _Client.Connect(Id.ToString());
+                        Client.Connect(Id.ToString());
                         ConsoleExtensions.WriteLine("Successfully connected to the broker.");
                     }
                     catch (Exception ex)
@@ -184,7 +155,7 @@ namespace DiscoverableMqtt
         {
             if (IsConnected)
             {
-                _Client.Disconnect();
+                Client.Disconnect();
                 ConsoleExtensions.WriteLine("Successfully disconnected from the broker.");
             }
         }

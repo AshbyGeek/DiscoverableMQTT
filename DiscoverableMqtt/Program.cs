@@ -1,14 +1,17 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace DiscoverableMqtt
 {
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     class Program
     {
         private static string AppSettingsFilePath { get; set; } = Path.Combine(Directory.GetCurrentDirectory(), "appSettings.json");
@@ -17,128 +20,81 @@ namespace DiscoverableMqtt
         {
             var settings = new AppSettings()
             {
-                FilePath = AppSettingsFilePath
+                FilePath = AppSettingsFilePath,
             };
-
-            // Set up bindings
-            var messenger = new Messenger();
-            settings.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(settings.BrokerUrl))
-                {
-                    messenger.ServerAddress = settings.BrokerUrl;
-                    ConsoleExtensions.WriteLine($"Broker Address set to: {messenger.ServerAddress}");
-                }
-                if (e.PropertyName == nameof(settings.Id))
-                {
-                    messenger.Id = settings.Id;
-                    ConsoleExtensions.WriteLine($"Messenger ID set to: {messenger.Id}");
-                }
-            };
-            
-            var publisher = messenger.GetPublisher();
-            settings.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(settings.ProbeTopic))
-                {
-                    publisher.Topic = settings.ProbeTopic;
-                    ConsoleExtensions.WriteLine($"Publisher Topic set to: {publisher.Topic}");
-                }
-            };
-
-            var probe = GetProbe(settings);
-            probe.DataChanged += (s, e) =>
-            {
-                var data = e.Data.ToString();
-                publisher.Publish(data);
-                ConsoleExtensions.WriteDebugLocation(data, 0);
-                messenger.PrintDebugInfo();
-            };
-
-            if (probe is Probes.LinuxTempProbe)
-            {
-                settings.PropertyChanged += (s, e) =>
-                {
-                    if (e.PropertyName == nameof(settings.ProbeDeviceName))
-                    {
-                        var lprobe = probe as Probes.LinuxTempProbe;
-                        lprobe.OneWireDeviceName = settings.ProbeDeviceName;
-                    }
-                };
-            }
-
-            settings.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(settings.DebugMode))
-                {
-                    ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
-                    ConsoleExtensions.WriteLine($"Debug option set to: {settings.DebugMode.ToString()}");
-                }
-            };
-
-            // Populate the settings (which should trigger a whole bunch of changes above)
             settings.ReadFromFile();
 
-            // Start the probe
-            probe.Start();
-
-            // Read user input
-            var properties = settings.GetType().GetProperties();
-            while (true)
+            using (var sensorManager = new SensorManager(settings))
             {
-                ConsoleExtensions.Write(">");
-                var tmpLine = Console.ReadLine();
+                var continueLooping = true;
+                while (continueLooping)
+                {
+                    ConsoleExtensions.Write(">");
+                    continueLooping = HandleInput(settings, sensorManager);
+                }
+            }
+        }
 
-                if (tmpLine.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
+        private static bool HandleInput(AppSettings settings, SensorManager manager)
+        {
+            string input = Console.ReadLine();
+            if (input.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
+            {
+                return false;
+            }
+            else if (input.Equals("help", StringComparison.InvariantCultureIgnoreCase))
+            {
+                PrintOptions(settings);
+            }
+            else if (input.Equals("clear", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Console.Clear();
+            }
+            else if (input.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
+            {
+                ConsoleExtensions.WriteLine("Please confirm this action by typing 'yes please'");
+                if (Console.ReadLine() == "yes please")
                 {
-                    break;
+                    settings.ResetToDefaults();
+                    manager.UpdateFromSettings(settings);
+                    settings.SaveSettings();
                 }
-                else if (tmpLine.Equals("help", StringComparison.InvariantCultureIgnoreCase))
+            }
+            else if (input.StartsWith("msg: "))
+            {
+                var msg = input.Substring(4).Trim();
+                manager.Publisher.Publish(msg);
+            }
+            else if (input.Equals("stop", StringComparison.InvariantCultureIgnoreCase))
+            {
+                manager.Probe.Stop();
+                ConsoleExtensions.WriteDebugLocation("       ", 0);
+            }
+            else if (input.Equals("start", StringComparison.InvariantCultureIgnoreCase))
+            {
+                manager.Probe.Start();
+            }
+            else if (input.Equals("list probes", StringComparison.InvariantCultureIgnoreCase) && manager.Probe is Probes.LinuxTempProbe)
+            {
+                var lprobe = manager.Probe as Probes.LinuxTempProbe;
+                foreach (var name in lprobe.GetOneWireDeviceNames())
                 {
-                    PrintOptions(settings);
+                    ConsoleExtensions.WriteLine("  " + name);
                 }
-                else if (tmpLine.Equals("clear", StringComparison.InvariantCultureIgnoreCase))
+            }
+            else
+            {
+                if (ReadProperty(settings, input))
                 {
-                    Console.Clear();
+                    manager.UpdateFromSettings(settings);
+                    settings.SaveSettings();
                 }
-                else if (tmpLine.Equals("reset", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    ConsoleExtensions.WriteLine("Please confirm this action by typing 'yes please'");
-                    if (Console.ReadLine() == "yes please")
-                    {
-                        settings.ResetToDefaults();
-                    }
-                }
-                else if (tmpLine.StartsWith("msg: "))
-                {
-                    var msg = tmpLine.Substring(4).Trim();
-                    publisher.Publish(msg);
-                }
-                else if (tmpLine.Equals("stop", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    probe.Stop();
-                    ConsoleExtensions.WriteDebugLocation("       ", 0);
-                }
-                else if (tmpLine.Equals("start", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    probe.Start();
-                }
-                else if (tmpLine.Equals("list probes", StringComparison.InvariantCultureIgnoreCase) && probe is Probes.LinuxTempProbe)
-                {
-                    var lprobe = probe as Probes.LinuxTempProbe;
-                    foreach(var name in lprobe.GetOneWireDeviceNames())
-                    {
-                        ConsoleExtensions.WriteLine("  " + name);
-                    }
-                }
-                else if (!ReadProperty(settings, tmpLine))
+                else
                 {
                     ConsoleExtensions.WriteLine("Unrecognized command");
                 }
             }
-
-            probe.Stop();
-            messenger.Disconnect();
+            return true;
         }
         
         private static PropertyInfo[] AppSettingsProperties = typeof(AppSettings).GetProperties();
@@ -149,6 +105,7 @@ namespace DiscoverableMqtt
             ConsoleExtensions.WriteLine("  Msg: <blah> - sends a message to the broker (if connected)");
             ConsoleExtensions.WriteLine("  Start - starts the probe if it isn't already started");
             ConsoleExtensions.WriteLine("  Stop - stops the probe if it is running");
+            ConsoleExtensions.WriteLine("  Reset - resets all options to defaults (option must be confirmed)");
             if (showLinuxProbeOptions)
             {
                 ConsoleExtensions.WriteLine("  list probes - lists all available 1 wire probes");
@@ -190,47 +147,6 @@ namespace DiscoverableMqtt
             }
 
             return false;
-        }
-
-        private static Probes.AbstractTempProbe GetProbe(AppSettings settings)
-        {
-            Probes.AbstractTempProbe probe;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                var linuxProbe = new Probes.LinuxTempProbe();
-                settings.PropertyChanged += (s, e) =>
-                {
-                    if (e.PropertyName == nameof(settings.ProbeDeviceName))
-                    {
-                        linuxProbe.OneWireDeviceName = settings.ProbeDeviceName;
-                    }
-                };
-                probe = linuxProbe;
-            }
-            else
-            {
-                probe = new Probes.FakeTempProbe();
-            }
-            
-            settings.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(settings.ProbeInterval))
-                {
-                    probe.MeasureInterval = settings.ProbeInterval;
-                }
-            };
-
-            return probe;
-        }
-
-        /// <summary>
-        /// A stand in for Helen's interface call, whenever she gets around to it
-        /// </summary>
-        /// <param name="name">The name to pass to Helen</param>
-        /// <returns>The database ID to use</returns>
-        private static string GetID(string name)
-        {
-            return name;
         }
     }
 }

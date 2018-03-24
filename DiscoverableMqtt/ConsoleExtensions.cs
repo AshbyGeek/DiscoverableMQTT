@@ -4,6 +4,7 @@ using System.Text;
 
 namespace DiscoverableMqtt
 {
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public static class ConsoleExtensions
     {
         private static object _ConsoleLock = new object();

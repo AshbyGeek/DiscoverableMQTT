@@ -38,6 +38,7 @@ namespace DiscoverableMqtt
         ushort Unsubscribe(string[] topics);
     }
 
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class MqttClientWrapper : IMqttClientWrapper
     {
         public MqttClient Client { get; set; }

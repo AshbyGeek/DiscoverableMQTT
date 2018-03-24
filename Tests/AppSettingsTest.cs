@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscoverableMqtt.Tests
+namespace DiscoverableMqtt.Tests.Probes
 {
-    [TestClass]
+    [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class AppSettingsTest
     {
         [TestMethod]
@@ -15,13 +15,19 @@ namespace DiscoverableMqtt.Tests
             var filePath = PrepareFile();
 
             // Generate, modify, and save settings
-            var settings = new AppSettings();
-            settings.Id = Guid.NewGuid();
-            settings.SaveSettings(filePath);
+            var settings = new AppSettings
+            {
+                Id = int.MinValue,
+                FilePath = filePath,
+            };
+            settings.SaveSettings();
 
             // Read the settings back
-            var newSettings = new AppSettings();
-            newSettings.ReadFromFile(filePath);
+            var newSettings = new AppSettings()
+            {
+                FilePath = filePath,
+            };
+            newSettings.ReadFromFile();
 
             // Verify our settings match
             Assert.AreEqual(settings.Id, newSettings.Id);
@@ -29,21 +35,7 @@ namespace DiscoverableMqtt.Tests
             // Clean up our temp file
             PrepareFile();
         }
-
-        [TestMethod]
-        public void AppSettings_PropertyChanged_Triggers()
-        {
-            var propertiesChanged = new List<string>();
-
-            var settings = new AppSettings();
-            settings.PropertyChanged += (s, e) => propertiesChanged.Add(e.PropertyName);
-
-            settings.Id = Guid.NewGuid();
-
-            Assert.IsTrue(propertiesChanged.Count == 1);
-            Assert.IsTrue(propertiesChanged.Contains(nameof(settings.Id)));
-        }
-
+        
         /// <summary>
         /// Makes sure that the temporary json file doesn't exist and returns the path to it
         /// </summary>
@@ -56,6 +48,38 @@ namespace DiscoverableMqtt.Tests
                 File.Delete(filePath);
             }
             return filePath;
+        }
+
+        [TestMethod]
+        public void AppSettings_FilePath()
+        {
+            var settings = new AppSettings();
+            settings.FilePath = "blah";
+            Assert.AreEqual("blah", settings.FilePath);
+        }
+
+        [TestMethod]
+        public void AppSettings_ResetToDefaults()
+        {
+            var settings = new AppSettings()
+            {
+                BrokerUrl = "dummy",
+                DebugMode = true,
+                FilePath = "bogus",
+                Id = 12345566,
+                ProbeDeviceName = "sugob",
+                ProbeInterval = 5000,
+                ProbeTopic = "gnitset"
+            };
+            settings.ResetToDefaults();
+
+            var settings2 = new AppSettings();
+            Assert.AreEqual(settings2.BrokerUrl, settings.BrokerUrl);
+            Assert.AreEqual(settings2.DebugMode, settings.DebugMode);
+            Assert.AreEqual(settings2.Id, settings.Id);
+            Assert.AreEqual(settings2.ProbeDeviceName, settings.ProbeDeviceName);
+            Assert.AreEqual(settings2.ProbeInterval, settings.ProbeInterval);
+            Assert.AreEqual(settings2.ProbeTopic, settings.ProbeTopic);
         }
     }
 }

@@ -4,10 +4,10 @@ using System.Collections.Generic;
 using System.Text;
 using DiscoverableMqtt.Probes;
 
-namespace DiscoverableMqtt.Tests
+namespace DiscoverableMqtt.Tests.Probes
 {
-    [TestClass]
-    public class FakeTempProbeTests
+    [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    public class FakeTempProbeTest
     {
         private FakeTempProbe _probe;
 

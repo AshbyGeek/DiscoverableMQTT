@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace DiscoverableMqtt.Tests
 {
-    [TestClass]
+    [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class LinuxTempProbeTest
     {
         const string FAKE_DEV1_NAME = "28_12345";

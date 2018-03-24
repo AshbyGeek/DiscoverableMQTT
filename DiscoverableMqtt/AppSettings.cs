@@ -9,101 +9,14 @@ using System.Text;
 
 namespace DiscoverableMqtt
 {
-    public class AppSettings : INotifyPropertyChanged
+    public class AppSettings
     {
-        public Guid Id
-        {
-            get => _Id;
-            set
-            {
-                if (_Id != value)
-                {
-                    _Id = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private Guid _Id = Guid.NewGuid();
-
-        public string BrokerUrl
-        {
-            get => _BrokerUrl;
-            set
-            {
-                if (_BrokerUrl != value)
-                {
-                    _BrokerUrl = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private string _BrokerUrl = "";
-        
-        public bool DebugMode
-        {
-            get => _DebugMode;
-            set
-            {
-                if (_DebugMode != value)
-                {
-                    _DebugMode = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private bool _DebugMode = false;
-
-        public string ProbeDeviceName
-        {
-            get => _ProbeDeviceName;
-            set
-            {
-                if (_ProbeDeviceName != value)
-                {
-                    _ProbeDeviceName = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private string _ProbeDeviceName = "";
-
-        public int ProbeInterval
-        {
-            get => _ProbeInterval;
-            set
-            {
-                if (_ProbeInterval != value)
-                {
-                    _ProbeInterval = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private int _ProbeInterval = 500;
-
-        public string ProbeTopic
-        {
-            get => _ProbeTopic;
-            set
-            {
-                if (_ProbeTopic != value)
-                {
-                    _ProbeTopic = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        private string _ProbeTopic = "test/linux";
-
-        #region ------------------ INotifyPropertyChanged ------------------
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
-        {
-            SaveSettings();
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        #endregion
+        public int Id { get; set; } = int.MinValue;
+        public string BrokerUrl { get; set; } = "";
+        public bool DebugMode { get; set; } = false;
+        public string ProbeDeviceName { get; set; } = "";
+        public int ProbeInterval { get; set; } = 500;
+        public string ProbeTopic { get; set; } = "test/linux";
 
         #region ------------------ Utilities/Unsaved properties and methods ------------------
         [JsonIgnore]
