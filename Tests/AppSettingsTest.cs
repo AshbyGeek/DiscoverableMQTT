@@ -17,7 +17,7 @@ namespace DiscoverableMqtt.Tests.Probes
             // Generate, modify, and save settings
             var settings = new AppSettings
             {
-                Id = int.MinValue,
+                ApiId = int.MinValue,
                 FilePath = filePath,
             };
             settings.SaveSettings();
@@ -30,7 +30,7 @@ namespace DiscoverableMqtt.Tests.Probes
             newSettings.ReadFromFile();
 
             // Verify our settings match
-            Assert.AreEqual(settings.Id, newSettings.Id);
+            Assert.AreEqual(settings.ApiId, newSettings.ApiId);
 
             // Clean up our temp file
             PrepareFile();
@@ -66,7 +66,7 @@ namespace DiscoverableMqtt.Tests.Probes
                 BrokerUrl = "dummy",
                 DebugMode = true,
                 FilePath = "bogus",
-                Id = 12345566,
+                ApiId = 12345566,
                 ProbeDeviceName = "sugob",
                 ProbeInterval = 5000,
                 ProbeTopic = "gnitset"
@@ -76,7 +76,7 @@ namespace DiscoverableMqtt.Tests.Probes
             var settings2 = new AppSettings();
             Assert.AreEqual(settings2.BrokerUrl, settings.BrokerUrl);
             Assert.AreEqual(settings2.DebugMode, settings.DebugMode);
-            Assert.AreEqual(settings2.Id, settings.Id);
+            Assert.AreEqual(settings2.ApiId, settings.ApiId);
             Assert.AreEqual(settings2.ProbeDeviceName, settings.ProbeDeviceName);
             Assert.AreEqual(settings2.ProbeInterval, settings.ProbeInterval);
             Assert.AreEqual(settings2.ProbeTopic, settings.ProbeTopic);

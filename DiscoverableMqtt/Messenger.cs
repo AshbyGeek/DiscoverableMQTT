@@ -9,10 +9,7 @@ namespace DiscoverableMqtt
 {
     public interface IMessenger
     {
-        IFactory Factory { get; set; }
-        int Id { get; set; }
         bool IsConnected { get; }
-        string ServerAddress { get; set; }
 
         void Connect();
         void Disconnect();
@@ -22,51 +19,31 @@ namespace DiscoverableMqtt
 
     public class Messenger : IMessenger
     {
-        internal object MessengerLock = new object();
+        private bool connectInProgress = false;
+
+        private int ApiId;
+        private Guid Guid;
+        private IFactory Factory;
+        private IMqttClientWrapper Client;
+
+        #region  Constructors
+        public Messenger(AppSettings settings, IFactory factory)
+        {
+            ApiId = settings.ApiId;
+            Guid = settings.Guid;
+            Factory = factory;
+
+            Client = Factory.CreateMqttClientWrapper(settings.BrokerUrl);
+        }
+        #endregion
         
-        /// <summary>
-        /// A factory to be used for producing needed components, like an MqttClientWrapper.
-        /// Probably only needed for unit tests.
-        /// </summary>
-        public IFactory Factory { get; set; } = new Factory();
-
-        public int Id
-        {
-            get => _Id;
-            set
-            {
-                if (_Id != value)
-                {
-                    Disconnect();
-                    _Id = value;
-                    Connect();
-                }
-            }
-        }
-        private int _Id = int.MinValue;
-
-        public string ServerAddress
-        {
-            get => _ServerAddress;
-            set
-            {
-                if (_ServerAddress != value)
-                {
-                    Disconnect();
-                    _ServerAddress = value;
-                    Connect();
-                }
-            }
-        }
-        private string _ServerAddress = "";
-
         public bool IsConnected
         {
             get
             {
                 try
                 {
-                    return Client?.IsConnected ?? false;
+                    return Client.IsConnected;
                 }
                 catch (Exception ex)
                 {
@@ -75,40 +52,12 @@ namespace DiscoverableMqtt
                 }
             }
         }
-
-        private IMqttClientWrapper Client
-        {
-            get => _Client;
-            set
-            {
-                if (value != _Client)
-                {
-                    _Client = value;
-                    _Publishers.ForEach(x => x.Client = _Client);
-                    _Listeners.ForEach(x => x.Client = _Client);
-                }
-            }
-        }
-        private IMqttClientWrapper _Client;
-
-        #region  Constructors
-        public Messenger() { }
-
-        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-        public Messenger(string serverAddress, int id)
-        {
-            Id = id;
-            ServerAddress = serverAddress;
-        }
-        #endregion
-
+        
         public IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1)
         {
-            var messenger = Factory.CreateMessengerPublisher(_Client, _Id);
+            var messenger = Factory.CreateMessengerPublisher(Client, ApiId);
             messenger.Topic = topic;
             messenger.QosLevel = qosLevel;
-            _Publishers.Add(messenger);
-            messenger.Disposed += (s, e) => _Publishers.Remove(s as IMessengerPublisher);
             return messenger;
         }
         private List<IMessengerPublisher> _Publishers = new List<IMessengerPublisher>();
@@ -118,9 +67,6 @@ namespace DiscoverableMqtt
             var listener = Factory.CreateMessengerListener(Client);
             listener.Topic = topic;
             listener.QosLevel = qosLevel;
-
-            _Listeners.Add(listener);
-            listener.Disposed += (s, e) => _Listeners.Remove(s as IMessengerListener);
             return listener;
         }
         private List<IMessengerListener> _Listeners = new List<IMessengerListener>();
@@ -132,21 +78,23 @@ namespace DiscoverableMqtt
 
         public void Connect()
         {
-            if (!String.IsNullOrEmpty(ServerAddress))
+            if (!IsConnected && !connectInProgress)
             {
-                Client = Factory.CreateMqttClientWrapper(ServerAddress);
                 Task.Run(() =>
                 {
+                    connectInProgress = true;
                     try
                     {
-                        Client.Connect(Id.ToString());
-                        ConsoleExtensions.WriteLine("Successfully connected to the broker.");
+                        Client.Connect(Guid.ToString());
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"Failed to connect to broker: {ex.Message}");
+                        ConsoleExtensions.WriteDebugLocation($"Connected to broker: failed", 1);
                     }
-                    PrintDebugInfo();
+                    finally
+                    {
+                        connectInProgress = false;
+                    }
                 });
             }
         }

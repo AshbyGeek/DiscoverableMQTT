@@ -11,7 +11,8 @@ namespace DiscoverableMqtt
 {
     public class AppSettings
     {
-        public int Id { get; set; } = int.MinValue;
+        public Guid Guid { get; set; } = new Guid();
+        public int ApiId { get; set; } = int.MinValue;
         public string BrokerUrl { get; set; } = "";
         public bool DebugMode { get; set; } = false;
         public string ProbeDeviceName { get; set; } = "";

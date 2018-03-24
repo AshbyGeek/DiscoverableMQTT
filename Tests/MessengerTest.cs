@@ -12,6 +12,7 @@ namespace DiscoverableMqtt.Tests
     {
         public const string SERV_ADDR = "localhost";
         public static readonly int CLIENT_ID = int.MinValue;
+        public static readonly Guid guid = Guid.NewGuid();
 
         
         public Fakes.FakeFactory moqFactory;
@@ -22,47 +23,28 @@ namespace DiscoverableMqtt.Tests
         public void TestInitialize()
         {
             moqFactory = new Fakes.FakeFactory(true);
-
-            messenger = new Messenger()
-            {
-                Factory = moqFactory.Object, // This must come first
-                Id = CLIENT_ID,
-                ServerAddress = SERV_ADDR,
-            };
-
             moqFactory.Client.Setup(x => x.IsConnected).Returns(true);
+
+            var appSettings = new AppSettings()
+            {
+                ApiId = CLIENT_ID,
+                BrokerUrl = SERV_ADDR,
+                Guid = guid,
+            };
+            messenger = new Messenger(appSettings, moqFactory.Object);
         }
 
         [TestMethod]
         public void Messenger_Connect_CallsConnect()
         {
+            moqFactory.Client.Setup(x => x.IsConnected).Returns(false);
             messenger.Connect();
 
+            //Connect actually runs in a separate thread, so wee need to sleep a minute to give it time to run
+            System.Threading.Thread.Sleep(20);
+
             moqFactory.Verify(x => x.CreateMqttClientWrapper(SERV_ADDR));
-            moqFactory.Client.Verify(x => x.Connect(CLIENT_ID.ToString()));
-        }
-
-        [DataTestMethod]
-        [DataRow(5, "", false, false, false)]
-        [DataRow(6, "", true, true, false)]
-        [DataRow(2, "localhost", true, true, true)]
-        [DataRow(4, "localhost", false, false, true)]
-        public void Messenger_Id_ConnectDisconnectTests(int id, string serverAddress, bool isconnected, bool disconnects, bool connects)
-        {
-            moqFactory.Client.Setup(x => x.IsConnected).Returns(isconnected);
-            messenger.ServerAddress = serverAddress;
-            moqFactory.Client.ResetCalls();
-
-            messenger.Id = id;
-
-            if (disconnects)
-            {
-                moqFactory.Client.Verify(x => x.Disconnect());
-            }
-            if (connects)
-            {
-                moqFactory.Client.Verify(x => x.Connect(id.ToString()));
-            }
+            moqFactory.Client.Verify(x => x.Connect(guid.ToString()));
         }
 
         [TestMethod]

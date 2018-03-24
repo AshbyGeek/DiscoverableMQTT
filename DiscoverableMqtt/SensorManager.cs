@@ -13,42 +13,39 @@ namespace DiscoverableMqtt
         public IMessenger Messenger = null;
         public IMessengerPublisher Publisher = null;
         public Probes.AbstractTempProbe Probe = null;
-        public AppSettings settings;
+        public AppSettings Settings;
+        public IFactory Factory;
 
-        public SensorManager(AppSettings settings)
+        public SensorManager(AppSettings settings, IFactory factory = null)
         {
-            Messenger = new Messenger();
-            Publisher = Messenger.GetPublisher();
+            if (factory == null)
+            {
+                factory = new Factory();
+            }
+            Factory = factory;
 
             Probe = GetProbe(settings);
-            Probe.DataChanged += (s, e) =>
-            {
-                var data = e.Data.ToString();
-                Publisher.Publish(data);
-                ConsoleExtensions.WriteDebugLocation(data, 0);
-                Messenger.PrintDebugInfo();
-            };
+            Probe.DataChanged += Probe_DataChanged;
 
             UpdateFromSettings(settings);
 
             // Start the probe
             Probe.Start();
-        }    
-
+        }
+        
         public void UpdateFromSettings(AppSettings settings)
         {
-            if (settings.Id == int.MinValue)
+            if (settings.ApiId == int.MinValue)
             {
-                settings.Id = RegisterWithHelen();
+                settings.ApiId = RegisterWithHelen();
             }
             if (string.IsNullOrWhiteSpace(settings.BrokerUrl))
             {
                 settings.BrokerUrl = GetConnectionInfoFromHelen();
             }
 
-            Messenger.ServerAddress = settings.BrokerUrl;
-            Messenger.Id = settings.Id;
-
+            Messenger = new Messenger(settings, new Factory());
+            Publisher = Messenger.GetPublisher();
             Publisher.Topic = settings.ProbeTopic;
 
             Probe.MeasureInterval = settings.ProbeInterval;
@@ -65,6 +62,18 @@ namespace DiscoverableMqtt
         {
             Probe.Stop();
             Messenger.Disconnect();
+        }
+
+        private void Probe_DataChanged(object sender, GenericEventArgs<float> e)
+        {
+            var data = e.Data.ToString();
+            if (!Messenger.IsConnected)
+            {
+                Messenger.Connect();
+            }
+            Publisher?.Publish(data);
+            ConsoleExtensions.WriteDebugLocation(data, 0);
+            Messenger.PrintDebugInfo();
         }
 
         private static Probes.AbstractTempProbe GetProbe(AppSettings settings)
