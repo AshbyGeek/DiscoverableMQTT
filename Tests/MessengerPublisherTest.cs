@@ -82,12 +82,14 @@ namespace DiscoverableMqtt.Tests
         [TestMethod]
         public void MessengerPublisher_Dispose_FiresEvent()
         {
+            pub.Retain = true;
             bool eventFired = false;
             pub.Disposed += (s, e) => eventFired = true;
 
             pub.Dispose();
 
             Assert.IsTrue(eventFired);
+            moqFactory.Client.Verify(x => x.Publish(pub.Topic, It.Is<byte[]>(y => y.Length == 0), (byte)pub.QosLevel, pub.Retain));
         }
     }
 }
