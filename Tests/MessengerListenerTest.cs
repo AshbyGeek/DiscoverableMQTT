@@ -29,12 +29,12 @@ namespace DiscoverableMqtt.Tests
         [TestMethod]
         public void MessengerListener_SubscribeUnsubscribe()
         {
-            const byte QOS = 2;
+            const QosLevel QOS = QosLevel.ExactlyOnce;
             const string TOPIC = "Test/+/blah";
             Listener.Topic = TOPIC;
             Listener.QosLevel = QOS;
 
-            moqFactory.Client.Verify(x => x.Subscribe(new[] { TOPIC }, new[] { QOS }));
+            moqFactory.Client.Verify(x => x.Subscribe(new[] { TOPIC }, new byte[] { (byte)QOS }));
 
             Listener.Topic = "";
             moqFactory.Client.Verify(x => x.Unsubscribe(new[] { TOPIC }));

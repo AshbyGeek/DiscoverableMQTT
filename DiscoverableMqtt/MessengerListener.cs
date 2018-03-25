@@ -3,30 +3,57 @@ using System.Collections.Generic;
 using System.Text;
 using uPLibrary.Networking.M2Mqtt;
 using System.Text.RegularExpressions;
+using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace DiscoverableMqtt
 {
     public interface IMessengerListener : IDisposable
     {
-        event MqttClient.MqttMsgPublishEventHandler MsgReceived;
+        event EventHandler<MsgReceivedEventArgs> MsgReceived;
         event EventHandler Disposed;
 
         IMqttClientWrapper Client { get; set; }
 
         bool IsSubscribed { get; }
-        byte QosLevel { get; set; }
+        QosLevel QosLevel { get; set; }
         string Topic { get; set; }
     }
 
-    public class MsgReceivedEventArgs
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    public class MsgReceivedEventArgs : EventArgs
     {
         public string Topic;
         public string Message;
+
+        public bool DupFlag { get; set; }
+        public QosLevel QosLevel { get; set; }
+        public bool Retain { get; set; }
+
+        public static implicit operator MqttMsgPublishEventArgs(MsgReceivedEventArgs args)
+        {
+            return new MqttMsgPublishEventArgs(args.Topic,
+                                               Encoding.UTF8.GetBytes(args.Message),
+                                               args.DupFlag,
+                                               (byte)args.QosLevel,
+                                               args.Retain);
+        }
+
+        public static implicit operator MsgReceivedEventArgs(MqttMsgPublishEventArgs args)
+        {
+            return new MsgReceivedEventArgs()
+            {
+                Topic = args.Topic,
+                Message = Encoding.UTF8.GetString(args.Message),
+                DupFlag = args.DupFlag,
+                QosLevel = (QosLevel)args.QosLevel,
+                Retain = args.Retain
+            };
+        }
     }
 
     public class MessengerListener : IMessengerListener
     {
-        public event MqttClient.MqttMsgPublishEventHandler MsgReceived;
+        public event EventHandler<MsgReceivedEventArgs> MsgReceived;
         public event EventHandler Disposed;
 
         public MessengerListener(IMqttClientWrapper client)
@@ -49,7 +76,7 @@ namespace DiscoverableMqtt
         }
         private IMqttClientWrapper _Client;
 
-        public byte QosLevel
+        public QosLevel QosLevel
         {
             get => _QosLevel;
             set
@@ -62,7 +89,7 @@ namespace DiscoverableMqtt
                 }
             }
         }
-        private byte _QosLevel = 1;
+        private QosLevel _QosLevel = QosLevel.AtLeastOnce;
 
         public string Topic
         {
@@ -104,16 +131,16 @@ namespace DiscoverableMqtt
             if (!IsSubscribed && !String.IsNullOrWhiteSpace(Topic))
             {
                 Client.MqttMsgPublishReceived += Client_MqttMsgPublishReceived;
-                Client.Subscribe(new[] { Topic }, new[] { QosLevel });
+                Client.Subscribe(new[] { Topic }, new byte[] { (byte)QosLevel });
                 IsSubscribed = true;
             }
         }
 
-        private void Client_MqttMsgPublishReceived(object sender, uPLibrary.Networking.M2Mqtt.Messages.MqttMsgPublishEventArgs e)
+        private void Client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
             if (_TopicRegex.IsMatch(e.Topic))
             {
-                MsgReceived?.Invoke(this, e);
+                MsgReceived?.Invoke(this, (MsgReceivedEventArgs)e);
             }
         }
 

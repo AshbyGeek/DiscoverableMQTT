@@ -13,7 +13,7 @@ namespace DiscoverableMqtt
         IMqttClientWrapper Client { get; set; }
         int Id { get; set; }
 
-        byte QosLevel { get; set; }
+        QosLevel QosLevel { get; set; }
         bool Retain { get; set; }
         string Topic { get; set; }
 
@@ -34,7 +34,7 @@ namespace DiscoverableMqtt
         public IMqttClientWrapper Client { get; set; }
         public int Id { get; set; }
 
-        public byte QosLevel { get; set; } = 1;
+        public QosLevel QosLevel { get; set; } = QosLevel.AtLeastOnce;
         public bool Retain { get; set; } = false;
         public string Topic { get; set; }
 
@@ -51,7 +51,7 @@ namespace DiscoverableMqtt
                 {
                     try
                     {
-                        Client.Publish(Topic, bytes, QosLevel, Retain);
+                        Client.Publish(Topic, bytes, (byte)QosLevel, Retain);
                     }
                     catch (Exception ex)
                     {

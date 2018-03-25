@@ -18,11 +18,20 @@ namespace DiscoverableMqtt
         public string ProbeDeviceName { get; set; } = "";
         public int ProbeInterval { get; set; } = 500;
         public string ProbeTopic { get; set; } = "test/linux";
+        public string HelenApiUrl { get; set; } = "http://localhost:51412/api/";
+
+        public string Name => $"DannyProbe{Guid:B}";
 
         #region ------------------ Utilities/Unsaved properties and methods ------------------
         [JsonIgnore]
         public string FilePath { get; set; }
 
+        /// <summary>
+        /// Serializes this AppSettings into a Json string
+        /// or attempts to set the values of this AppSettings using the given Json string.
+        /// The setter is perfectly happy to take values for only some of the AppSettings
+        /// Any serialization errors are caught, a message written to the Console, and otherwise ignored.
+        /// </summary>
         [JsonIgnore]
         public string Json
         {

@@ -28,10 +28,10 @@ namespace DiscoverableMqtt.Tests
         }
 
         [DataTestMethod]
-        [DataRow((byte)0, false, "Testing/Gnitset/#")]
-        [DataRow((byte)1, true, "/#")]
-        [DataRow((byte)2, true, "/+/stuff")]
-        public void MessengerPublisher_Publish_FlagsTest(byte qosLevel, bool retain, string topic)
+        [DataRow((QosLevel)0, false, "Testing/Gnitset/#")]
+        [DataRow((QosLevel)1, true, "/#")]
+        [DataRow((QosLevel)2, true, "/+/stuff")]
+        public void MessengerPublisher_Publish_FlagsTest(QosLevel qosLevel, bool retain, string topic)
         {
             const string MSG = "Bogus Sugob";
             byte[] MSG_bytes = Encoding.UTF8.GetBytes(MSG);
@@ -45,7 +45,7 @@ namespace DiscoverableMqtt.Tests
             // Publish is done asynchronously with a task, wait to make sure it completes
             System.Threading.Thread.Sleep(20);
 
-            moqFactory.Client.Verify(x => x.Publish(topic, It.IsAny<byte[]>(), qosLevel, retain));
+            moqFactory.Client.Verify(x => x.Publish(topic, It.IsAny<byte[]>(), (byte)qosLevel, retain));
         }
 
         [TestMethod]

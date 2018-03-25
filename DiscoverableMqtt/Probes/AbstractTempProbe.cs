@@ -5,7 +5,19 @@ using System.Timers;
 
 namespace DiscoverableMqtt.Probes
 {
-    public abstract class AbstractTempProbe
+    public interface IAbstractTempProbe
+    {
+        double MeasureInterval { get; set; }
+        AppSettings Settings { get; set; }
+
+        event EventHandler<GenericEventArgs<float>> DataChanged;
+
+        float GetCurrentData();
+        void Start();
+        void Stop();
+    }
+
+    public abstract class AbstractTempProbe : IAbstractTempProbe
     {
         /// <summary>
         /// Milliseconds between measurements

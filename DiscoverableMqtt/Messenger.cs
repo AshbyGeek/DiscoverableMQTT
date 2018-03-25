@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -13,8 +14,16 @@ namespace DiscoverableMqtt
 
         void Connect();
         void Disconnect();
-        IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1);
+        IMessengerPublisher GetPublisher(string topic = "", QosLevel qosLevel = QosLevel.AtLeastOnce);
+        IMessengerListener GetListener(string topic = "", QosLevel qosLevel = QosLevel.AtLeastOnce);
         void PrintDebugInfo();
+    }
+
+    public enum QosLevel
+    {
+        AtMostOnce = 0,
+        AtLeastOnce = 1,
+        ExactlyOnce = 2
     }
 
     public class Messenger : IMessenger
@@ -53,24 +62,23 @@ namespace DiscoverableMqtt
             }
         }
         
-        public IMessengerPublisher GetPublisher(string topic = "", byte qosLevel = 1)
+        public IMessengerPublisher GetPublisher(string topic = "", QosLevel qosLevel = QosLevel.AtLeastOnce)
         {
             var messenger = Factory.CreateMessengerPublisher(Client, ApiId);
             messenger.Topic = topic;
             messenger.QosLevel = qosLevel;
             return messenger;
         }
-        private List<IMessengerPublisher> _Publishers = new List<IMessengerPublisher>();
 
-        public IMessengerListener GetListener(string topic = "", byte qosLevel = 1)
+        public IMessengerListener GetListener(string topic = "", QosLevel qosLevel = QosLevel.AtLeastOnce)
         {
             var listener = Factory.CreateMessengerListener(Client);
             listener.Topic = topic;
             listener.QosLevel = qosLevel;
             return listener;
         }
-        private List<IMessengerListener> _Listeners = new List<IMessengerListener>();
 
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public void PrintDebugInfo()
         {
             ConsoleExtensions.WriteDebugLocation($"Connected to broker: {IsConnected}", 1);
@@ -87,7 +95,7 @@ namespace DiscoverableMqtt
                     {
                         Client.Connect(Guid.ToString());
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         ConsoleExtensions.WriteDebugLocation($"Connected to broker: failed", 1);
                     }

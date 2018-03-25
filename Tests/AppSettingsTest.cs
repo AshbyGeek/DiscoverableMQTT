@@ -81,5 +81,14 @@ namespace DiscoverableMqtt.Tests.Probes
             Assert.AreEqual(settings2.ProbeInterval, settings.ProbeInterval);
             Assert.AreEqual(settings2.ProbeTopic, settings.ProbeTopic);
         }
+
+        [TestMethod]
+        public void AppSettings_Json_InvalidSet()
+        {
+            var settings = new AppSettings();
+            settings.Json = @" Broken }";
+
+            // Make sure that invalid JSON can be handled without throwing an exception.
+        }
     }
 }

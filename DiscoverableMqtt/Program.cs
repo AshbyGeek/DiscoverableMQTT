@@ -63,7 +63,7 @@ namespace DiscoverableMqtt
             else if (input.StartsWith("msg: "))
             {
                 var msg = input.Substring(4).Trim();
-                manager.Publisher.Publish(msg);
+                manager.ProbePublisher.Publish(msg);
             }
             else if (input.Equals("stop", StringComparison.InvariantCultureIgnoreCase))
             {

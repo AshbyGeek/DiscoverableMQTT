@@ -10,21 +10,33 @@ namespace DiscoverableMqtt
 {
     public class SensorManager : IDisposable
     {
-        public IMessenger Messenger = null;
-        public IMessengerPublisher Publisher = null;
-        public Probes.AbstractTempProbe Probe = null;
         public AppSettings Settings;
         public IFactory Factory;
+        public IHelenApiInterface HelenApi;
+        public IMessenger Messenger;
 
-        public SensorManager(AppSettings settings, IFactory factory = null)
+        public Probes.IAbstractTempProbe Probe;
+        public IMessengerPublisher ProbePublisher;
+
+        public IMessengerListener ConfigListener;
+
+        public SensorManager(AppSettings settings, IFactory factory = null, IHelenApiInterface helenApi = null)
         {
+            Settings = settings;
+
             if (factory == null)
             {
                 factory = new Factory();
             }
             Factory = factory;
 
-            Probe = GetProbe(settings);
+            if (helenApi == null)
+            {
+                helenApi = new HelenApiInterface();
+            }
+            HelenApi = helenApi;
+
+            Probe = Factory.CreateTempProbe(settings);
             Probe.DataChanged += Probe_DataChanged;
 
             UpdateFromSettings(settings);
@@ -33,20 +45,23 @@ namespace DiscoverableMqtt
             Probe.Start();
         }
         
-        public void UpdateFromSettings(AppSettings settings)
+        public void UpdateFromSettings(AppSettings settings = null)
         {
-            if (settings.ApiId == int.MinValue)
+            if (settings == null)
             {
-                settings.ApiId = RegisterWithHelen();
+                settings = Settings;
             }
-            if (string.IsNullOrWhiteSpace(settings.BrokerUrl))
+            else
             {
-                settings.BrokerUrl = GetConnectionInfoFromHelen();
+                Settings = settings;
             }
+            settings.ApiId = HelenApi.GetApiId(settings);
+            settings.BrokerUrl = HelenApi.GetBrokerUrl(settings);
 
-            Messenger = new Messenger(settings, new Factory());
-            Publisher = Messenger.GetPublisher();
-            Publisher.Topic = settings.ProbeTopic;
+            Messenger = Factory.CreateMessenger(settings);
+
+            ProbePublisher?.Dispose();
+            ProbePublisher = Messenger.GetPublisher(settings.ProbeTopic);
 
             Probe.MeasureInterval = settings.ProbeInterval;
             if (Probe is Probes.LinuxTempProbe)
@@ -55,11 +70,22 @@ namespace DiscoverableMqtt
                 lprobe.OneWireDeviceName = settings.ProbeDeviceName;
             }
 
+            ConfigListener?.Dispose();
+            ConfigListener = Messenger.GetListener("DeviceConfig/" + settings.Name);
+            ConfigListener.MsgReceived += ConfigListener_MsgReceived;
+
             ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
+        }
+
+        private void ConfigListener_MsgReceived(object sender, MsgReceivedEventArgs e)
+        {
+            Settings.Json = e.Message;
+            UpdateFromSettings(Settings);
         }
 
         public void Dispose()
         {
+            ProbePublisher?.Dispose();
             Probe.Stop();
             Messenger.Disconnect();
         }
@@ -71,56 +97,9 @@ namespace DiscoverableMqtt
             {
                 Messenger.Connect();
             }
-            Publisher?.Publish(data);
+            ProbePublisher?.Publish(data);
             ConsoleExtensions.WriteDebugLocation(data, 0);
             Messenger.PrintDebugInfo();
-        }
-
-        private static Probes.AbstractTempProbe GetProbe(AppSettings settings)
-        {
-            Probes.AbstractTempProbe probe;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                var linuxProbe = new Probes.LinuxTempProbe();
-                linuxProbe.OneWireDeviceName = settings.ProbeDeviceName;
-                probe = linuxProbe;
-            }
-            else
-            {
-                probe = new Probes.FakeTempProbe();
-            }
-
-            probe.MeasureInterval = settings.ProbeInterval;
-            return probe;
-        }
-
-        private static HttpClient client = new HttpClient();
-
-        private static string GetConnectionInfoFromHelen()
-        {
-            return "192.168.1.49";
-        }
-
-        private static int RegisterWithHelen()
-        {
-            client.BaseAddress = new Uri("http://localhost:51412/api/");
-
-            HttpResponseMessage response;
-
-            do
-            {
-                var route = "DeviceList/RegisterDevice/";
-                route += HttpUtility.UrlEncode("DannyProbe");
-                response = client.PostAsJsonAsync(route, new JValue("")).Result;
-            } while (!response.IsSuccessStatusCode);
-
-            var msg = response.Content.ReadAsStringAsync().Result;
-            var indx1 = msg.IndexOf(':') + 1;
-            var indx2 = msg.IndexOf("Please", indx1);
-            var idStr = msg.Substring(indx1, indx2 - indx1).Trim();
-            var id = int.Parse(idStr);
-
-            return id;
         }
     }
 }

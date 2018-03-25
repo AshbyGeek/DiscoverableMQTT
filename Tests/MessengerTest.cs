@@ -24,7 +24,7 @@ namespace DiscoverableMqtt.Tests
         {
             moqFactory = new Fakes.FakeFactory(true);
             moqFactory.Client.Setup(x => x.IsConnected).Returns(true);
-
+            
             var appSettings = new AppSettings()
             {
                 ApiId = CLIENT_ID,
@@ -51,7 +51,7 @@ namespace DiscoverableMqtt.Tests
         public void Messenger_GetPublisher_ValuesCorrect()
         {
             const string TOPIC = "TESTTOPIC";
-            const int QOS_LEVEL = 1;
+            const QosLevel QOS_LEVEL = QosLevel.AtLeastOnce;
 
             using (var publisher = messenger.GetPublisher(TOPIC, QOS_LEVEL))
             {
@@ -66,7 +66,7 @@ namespace DiscoverableMqtt.Tests
         public void Messenger_GetListener_ValuesCorrect()
         {
             const string TOPIC = "TESTTOPIC";
-            const int QOS_LEVEL = 1;
+            const QosLevel QOS_LEVEL = QosLevel.AtLeastOnce;
 
             using (var listener = messenger.GetListener(TOPIC, QOS_LEVEL))
             {
@@ -85,6 +85,14 @@ namespace DiscoverableMqtt.Tests
             bool connected = messenger.IsConnected;
 
             Assert.IsFalse(connected);
+        }
+
+        [TestMethod]
+        public void Messenger_Disconnect()
+        {
+            messenger.Disconnect();
+
+            moqFactory.Client.Verify(x => x.Disconnect());
         }
     }
 }
