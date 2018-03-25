@@ -20,9 +20,9 @@ namespace DiscoverableMqtt.Tests
             settings = new AppSettings()
             {
                 ApiId = 42,
-                ProbeTopic = "blah/Moreblah/what",
+                Room = "blah/Moreblah/what",
                 BrokerUrl = "hahahaha",
-                ProbeInterval = 31415,
+                MeasureInterval = 31415,
             };
             moqFactory = new Fakes.FakeFactory(true);
             moqHelenApiInterface = new Fakes.FakeHelenApiInterface();
@@ -41,9 +41,9 @@ namespace DiscoverableMqtt.Tests
         public void SensorManager_UpdateFromSettings()
         {
             settings.ApiId = 24;
-            settings.ProbeTopic = "tahw/halberoM/halb";
+            settings.Room = "tahw/halberoM/halb";
             settings.BrokerUrl = "ahahahah";
-            settings.ProbeInterval = 53141;
+            settings.MeasureInterval = 53141;
 
             manager.UpdateFromSettings();
 
@@ -53,7 +53,7 @@ namespace DiscoverableMqtt.Tests
         [TestMethod]
         public void SensorManager_ConfigListener_MsgReceived()
         {
-            var json = @"{'ProbeTopic':'bogus', 'BrokerUrl':'sugob'}";
+            var json = @"{'" + nameof(AppSettings.Room) + "':'bogus', '" + nameof(AppSettings.BrokerUrl) + "':'sugob'}";
             var args = new MsgReceivedEventArgs()
             {
                 Message = json,
@@ -64,7 +64,7 @@ namespace DiscoverableMqtt.Tests
             };
             moqFactory.Listener.Raise(x => x.MsgReceived += null, (EventArgs)args);
 
-            Assert.AreEqual("bogus", settings.ProbeTopic);
+            Assert.AreEqual("bogus", settings.Room);
             Assert.AreEqual("sugob", settings.BrokerUrl);
             VerifyUpdateFromSettings(true, settings);
         }
@@ -100,12 +100,15 @@ namespace DiscoverableMqtt.Tests
             moqHelenApiInterface.Verify(x => x.GetApiId(settings));
             moqHelenApiInterface.Verify(x => x.GetBrokerUrl(settings));
             moqFactory.Verify(x => x.CreateMessenger(settings));
+            moqFactory.Probe.VerifySet(x => x.MeasureInterval = settings.MeasureInterval);
             if (expectDisposals)
             {
-                moqFactory.Publisher.Verify(x => x.Dispose());
+                moqFactory.Publisher.Verify(x => x.Dispose(), Times.AtLeast(2));
             }
-            moqFactory.Messenger.Verify(x => x.GetPublisher(settings.ProbeTopic, QosLevel.AtLeastOnce));
-            moqFactory.Probe.VerifySet(x => x.MeasureInterval = settings.ProbeInterval);
+            moqFactory.Messenger.Verify(x => x.GetPublisher($"Rooms/{settings.Room}/Temperature", QosLevel.AtLeastOnce));
+            moqFactory.Messenger.Verify(x => x.GetPublisher($"Devices/Configured/{settings.Name}", QosLevel.AtLeastOnce));
+            moqFactory.Publisher.VerifySet(x => x.Retain = true);
+            moqFactory.Publisher.Verify(x => x.PublishWithoutHeader(It.IsAny<string>()));
             if (expectDisposals)
             {
                 moqFactory.Listener.Verify(x => x.Dispose());

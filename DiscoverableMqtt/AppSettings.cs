@@ -11,13 +11,13 @@ namespace DiscoverableMqtt
 {
     public class AppSettings
     {
-        public Guid Guid { get; set; } = new Guid();
+        public Guid Guid { get; set; } = Guid.NewGuid();
         public int ApiId { get; set; } = int.MinValue;
         public string BrokerUrl { get; set; } = "";
         public bool DebugMode { get; set; } = false;
         public string ProbeDeviceName { get; set; } = "";
-        public int ProbeInterval { get; set; } = 500;
-        public string ProbeTopic { get; set; } = "test/linux";
+        public int MeasureInterval { get; set; } = 500;
+        public string Room { get; set; } = "";
         public string HelenApiUrl { get; set; } = "http://localhost:51412/api/";
 
         public string Name => $"DannyProbe{Guid:B}";

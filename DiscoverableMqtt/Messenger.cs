@@ -10,6 +10,8 @@ namespace DiscoverableMqtt
 {
     public interface IMessenger
     {
+        event EventHandler<GenericEventArgs<bool>> ConnectionStatusChanged;
+
         bool IsConnected { get; }
 
         void Connect();
@@ -28,6 +30,8 @@ namespace DiscoverableMqtt
 
     public class Messenger : IMessenger
     {
+        public event EventHandler<GenericEventArgs<bool>> ConnectionStatusChanged;
+
         private bool connectInProgress = false;
 
         private int ApiId;
@@ -43,9 +47,10 @@ namespace DiscoverableMqtt
             Factory = factory;
 
             Client = Factory.CreateMqttClientWrapper(settings.BrokerUrl);
+            Client.ConnectionClosed += (s,e) => OnConnectionStatusChanged();
         }
         #endregion
-        
+
         public bool IsConnected
         {
             get
@@ -102,6 +107,7 @@ namespace DiscoverableMqtt
                     finally
                     {
                         connectInProgress = false;
+                        OnConnectionStatusChanged();
                     }
                 });
             }
@@ -112,8 +118,14 @@ namespace DiscoverableMqtt
             if (IsConnected)
             {
                 Client.Disconnect();
+                OnConnectionStatusChanged();
                 ConsoleExtensions.WriteLine("Successfully disconnected from the broker.");
             }
+        }
+
+        protected void OnConnectionStatusChanged()
+        {
+            ConnectionStatusChanged?.Invoke(this, new GenericEventArgs<bool>(Client.IsConnected));
         }
     }
 }

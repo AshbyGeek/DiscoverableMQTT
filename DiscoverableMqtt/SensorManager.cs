@@ -17,7 +17,7 @@ namespace DiscoverableMqtt
 
         public Probes.IAbstractTempProbe Probe;
         public IMessengerPublisher ProbePublisher;
-
+        public IMessengerPublisher ConfigPublisher;
         public IMessengerListener ConfigListener;
 
         public SensorManager(AppSettings settings, IFactory factory = null, IHelenApiInterface helenApi = null)
@@ -57,24 +57,31 @@ namespace DiscoverableMqtt
             }
             settings.ApiId = HelenApi.GetApiId(settings);
             settings.BrokerUrl = HelenApi.GetBrokerUrl(settings);
+            capabilities.Settings = settings;
 
             Messenger = Factory.CreateMessenger(settings);
 
-            ProbePublisher?.Dispose();
-            ProbePublisher = Messenger.GetPublisher(settings.ProbeTopic);
-
-            Probe.MeasureInterval = settings.ProbeInterval;
+            Probe.MeasureInterval = settings.MeasureInterval;
             if (Probe is Probes.LinuxTempProbe)
             {
                 var lprobe = Probe as Probes.LinuxTempProbe;
                 lprobe.OneWireDeviceName = settings.ProbeDeviceName;
             }
 
+            ProbePublisher?.Dispose();
+            ProbePublisher = Messenger.GetPublisher(ProbeTopic);
+
+            ConfigPublisher?.Dispose();
+            ConfigPublisher = Messenger.GetPublisher(ConfigTopic);
+            ConfigPublisher.Retain = true;
+            Messenger.ConnectionStatusChanged += (s, e) => ConfigPublisher.PublishWithoutHeader(capabilities.Json);
+
             ConfigListener?.Dispose();
-            ConfigListener = Messenger.GetListener("DeviceConfig/" + settings.Name);
+            ConfigListener = Messenger.GetListener(DeviceConfigTopic);
             ConfigListener.MsgReceived += ConfigListener_MsgReceived;
 
             ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
+            Messenger.Connect();
         }
 
         private void ConfigListener_MsgReceived(object sender, MsgReceivedEventArgs e)
@@ -101,5 +108,11 @@ namespace DiscoverableMqtt
             ConsoleExtensions.WriteDebugLocation(data, 0);
             Messenger.PrintDebugInfo();
         }
+
+        private string DeviceConfigTopic => "DeviceConfig/" + Settings.Name;
+        private string ConfigTopic => String.IsNullOrEmpty(Settings.Room)? $"Devices/Unconfigured/{Settings.Name}" : $"Devices/Configured/{Settings.Name}";
+        private string ProbeTopic => $"Rooms/{Settings.Room}/Temperature";
+
+        private ProbeCapability capabilities = new ProbeCapability("Temperature");
     }
 }

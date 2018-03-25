@@ -68,8 +68,8 @@ namespace DiscoverableMqtt.Tests.Probes
                 FilePath = "bogus",
                 ApiId = 12345566,
                 ProbeDeviceName = "sugob",
-                ProbeInterval = 5000,
-                ProbeTopic = "gnitset"
+                MeasureInterval = 5000,
+                Room = "gnitset"
             };
             settings.ResetToDefaults();
 
@@ -78,8 +78,8 @@ namespace DiscoverableMqtt.Tests.Probes
             Assert.AreEqual(settings2.DebugMode, settings.DebugMode);
             Assert.AreEqual(settings2.ApiId, settings.ApiId);
             Assert.AreEqual(settings2.ProbeDeviceName, settings.ProbeDeviceName);
-            Assert.AreEqual(settings2.ProbeInterval, settings.ProbeInterval);
-            Assert.AreEqual(settings2.ProbeTopic, settings.ProbeTopic);
+            Assert.AreEqual(settings2.MeasureInterval, settings.MeasureInterval);
+            Assert.AreEqual(settings2.Room, settings.Room);
         }
 
         [TestMethod]

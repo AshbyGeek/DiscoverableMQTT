@@ -10,7 +10,6 @@ namespace DiscoverableMqtt
     {
         event EventHandler Disposed;
 
-        IMqttClientWrapper Client { get; set; }
         int Id { get; set; }
 
         QosLevel QosLevel { get; set; }
@@ -31,7 +30,7 @@ namespace DiscoverableMqtt
             Id = id;
         }
 
-        public IMqttClientWrapper Client { get; set; }
+        public IMqttClientWrapper Client { get; }
         public int Id { get; set; }
 
         public QosLevel QosLevel { get; set; } = QosLevel.AtLeastOnce;
@@ -47,22 +46,24 @@ namespace DiscoverableMqtt
             if (Client.IsConnected)
             {
                 var bytes = Encoding.UTF8.GetBytes(content);
-                Task.Run(() =>
+                try
                 {
-                    try
-                    {
-                        Client.Publish(Topic, bytes, (byte)QosLevel, Retain);
-                    }
-                    catch (Exception ex)
-                    {
-                        ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
-                    }
-                });
+                    Client.Publish(Topic, bytes, (byte)QosLevel, Retain);
+                }
+                catch (Exception ex)
+                {
+                    ConsoleExtensions.WriteLine("Failed to publish data: " + ex.Message);
+                }
             }
         }
 
         public void Dispose()
         {
+            if (Retain)
+            {
+                //Clear out any retained messages
+                PublishWithoutHeader("");
+            }
             Disposed?.Invoke(this, EventArgs.Empty);
         }
 
