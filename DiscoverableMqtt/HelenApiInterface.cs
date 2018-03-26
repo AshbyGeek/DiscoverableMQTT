@@ -17,20 +17,25 @@ namespace DiscoverableMqtt
     public class HelenApiInterface : IHelenApiInterface
     {
         const int MAX_RETRIES = 3;
-        private static HttpClient client = new HttpClient();
+        private static HttpClient client;
 
         public string GetBrokerUrl(AppSettings settings)
         {
             try
             {
-                client.BaseAddress = new Uri(settings.HelenApiUrl);
+                if (client == null)
+                {
+                    client = new HttpClient
+                    {
+                        BaseAddress = new Uri(settings.HelenApiUrl)
+                    };
+                }
 
                 HttpResponseMessage response;
                 int numTries = 0;
                 do
                 {
                     var route = "DeviceData/GetConnectionInfo/";
-                    route += HttpUtility.UrlEncode($"DannyProbe{settings.Guid:B}");
                     response = client.GetAsync(route).Result;
                     if (numTries++ > MAX_RETRIES)
                     {
@@ -39,7 +44,14 @@ namespace DiscoverableMqtt
                 } while (!response.IsSuccessStatusCode);
 
                 var msg = response.Content.ReadAsStringAsync().Result;
-                return msg;
+                if (string.IsNullOrEmpty(msg))
+                {
+                    throw new Exception("Helen's server didn't return a URL");
+                }
+                else
+                {
+                    return msg.Trim().Trim('\"');
+                }
             }
             catch (Exception)
             {
@@ -52,7 +64,13 @@ namespace DiscoverableMqtt
         {
             try
             {
-                client.BaseAddress = new Uri(settings.HelenApiUrl);
+                if (client == null)
+                {
+                    client = new HttpClient
+                    {
+                        BaseAddress = new Uri(settings.HelenApiUrl)
+                    };
+                }
 
                 HttpResponseMessage response;
                 int numTries = 0;
@@ -68,11 +86,8 @@ namespace DiscoverableMqtt
                 } while (!response.IsSuccessStatusCode);
 
                 var msg = response.Content.ReadAsStringAsync().Result;
-                var indx1 = msg.IndexOf(':') + 1;
-                var indx2 = msg.IndexOf("Please", indx1);
-                var idStr = msg.Substring(indx1, indx2 - indx1).Trim();
-                var id = int.Parse(idStr);
-
+                var obj = JObject.Parse(msg);
+                int id = (int)obj["id"];
                 return id;
             }
             catch (Exception)
