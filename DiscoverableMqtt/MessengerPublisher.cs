@@ -17,7 +17,6 @@ namespace DiscoverableMqtt
         string Topic { get; set; }
 
         void Publish(string content);
-        void PublishWithoutHeader(string content);
     }
 
     public class MessengerPublisher : IMessengerPublisher
@@ -37,9 +36,7 @@ namespace DiscoverableMqtt
         public bool Retain { get; set; } = false;
         public string Topic { get; set; }
 
-        public void Publish(string content) => PublishWithoutHeader(PacketHeader + content);
-
-        public void PublishWithoutHeader(string content)
+        public void Publish(string content)
         {
             byte[] newContent = Encoding.UTF8.GetBytes(content);
 
@@ -62,11 +59,11 @@ namespace DiscoverableMqtt
             if (Retain)
             {
                 //Clear out any retained messages
-                PublishWithoutHeader("");
+                Publish("");
             }
             Disposed?.Invoke(this, EventArgs.Empty);
         }
 
-        private string PacketHeader => Id.ToString() + " ";
+        private string PacketHeader => Id.ToString() + "-";
     }
 }

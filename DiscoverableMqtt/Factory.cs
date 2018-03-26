@@ -13,6 +13,7 @@ namespace DiscoverableMqtt
         IMessenger CreateMessenger(AppSettings settings);
         IMessengerListener CreateMessengerListener(IMqttClientWrapper client);
         IMessengerPublisher CreateMessengerPublisher(IMqttClientWrapper client, int id);
+        IHelenApiInterface CreateHelenApiInterface(string helenApiUrl);
     }
 
     public class Factory : IFactory
@@ -63,6 +64,11 @@ namespace DiscoverableMqtt
             {
                 return new Probes.FakeTempProbe();
             }
+        }
+
+        public IHelenApiInterface CreateHelenApiInterface(string helenApiUrl)
+        {
+            return new HelenApiInterface(helenApiUrl);
         }
     }
 }

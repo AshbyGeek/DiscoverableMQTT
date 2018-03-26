@@ -40,7 +40,7 @@ namespace DiscoverableMqtt.Tests
             pub.Retain = retain;
             pub.Topic = topic;
 
-            pub.PublishWithoutHeader(MSG);
+            pub.Publish(MSG);
 
             // Publish is done asynchronously with a task, wait to make sure it completes
             System.Threading.Thread.Sleep(20);
@@ -53,23 +53,6 @@ namespace DiscoverableMqtt.Tests
         {
             const string MSG = "TESTING MEssage testING. 1234";
             byte[] MSG_bytes = Encoding.UTF8.GetBytes(MSG);
-
-            pub.PublishWithoutHeader(MSG);
-
-            // Publish is done asynchronously with a task, wait to make sure it completes
-            System.Threading.Thread.Sleep(20);
-
-            moqFactory.Client.Verify(x => x.Publish(It.IsAny<string>(), MSG_bytes, It.IsAny<byte>(), It.IsAny<bool>()));
-        }
-
-        [TestMethod]
-        public void MessengerPublisher_Publish_WithHeader()
-        {
-            const string MSG = "TESTING MEssage testING. 1234";
-            const int ID = 1;
-            byte[] MSG_bytes = Encoding.UTF8.GetBytes(ID + " " + MSG);
-
-            pub.Id = ID;
 
             pub.Publish(MSG);
 

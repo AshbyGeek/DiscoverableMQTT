@@ -11,7 +11,6 @@ namespace DiscoverableMqtt.Tests
     {
         public AppSettings settings;
         public Fakes.FakeFactory moqFactory;
-        public Fakes.FakeHelenApiInterface moqHelenApiInterface;
         public SensorManager manager;
 
         [TestInitialize]
@@ -25,8 +24,7 @@ namespace DiscoverableMqtt.Tests
                 MeasureInterval = 31415,
             };
             moqFactory = new Fakes.FakeFactory(true);
-            moqHelenApiInterface = new Fakes.FakeHelenApiInterface();
-            manager = new SensorManager(settings, moqFactory.Object, moqHelenApiInterface.Object);
+            manager = new SensorManager(settings, moqFactory.Object);
         }
 
         [TestMethod]
@@ -62,7 +60,7 @@ namespace DiscoverableMqtt.Tests
                 Retain = false,
                 Topic = "blah/Moreblah/what",
             };
-            moqFactory.Listener.Raise(x => x.MsgReceived += null, (EventArgs)args);
+            moqFactory.Listener.Raise(x => x.MsgReceived += null, args);
 
             Assert.AreEqual("bogus", settings.Room);
             Assert.AreEqual("sugob", settings.BrokerUrl);
@@ -74,15 +72,18 @@ namespace DiscoverableMqtt.Tests
         [DataRow(true)]
         public void SensorManager_Probe_DataChanged(bool messengerIsConnected)
         {
+            const float VAL = 15.5f;
             moqFactory.Messenger.Setup(x => x.IsConnected).Returns(messengerIsConnected);
+            moqFactory.HelenApi.Setup(x => x.CreateDataMessage(settings.ApiId, VAL.ToString()))
+                .Returns("hahahaha");
 
-            moqFactory.Probe.Raise(x => x.DataChanged += null, new GenericEventArgs<float>(15.5f));
+            moqFactory.Probe.Raise(x => x.DataChanged += null, new GenericEventArgs<float>(VAL));
 
             if (!messengerIsConnected)
             {
                 moqFactory.Messenger.Verify(x => x.Connect());
             }
-            moqFactory.Publisher.Verify(x => x.Publish((15.5f).ToString()));
+            moqFactory.Publisher.Verify(x => x.Publish("hahahaha"));
         }
 
         [TestMethod]
@@ -97,8 +98,9 @@ namespace DiscoverableMqtt.Tests
 
         private void VerifyUpdateFromSettings(bool expectDisposals, AppSettings settings)
         {
-            moqHelenApiInterface.Verify(x => x.GetApiId(settings));
-            moqHelenApiInterface.Verify(x => x.GetBrokerUrl(settings));
+            moqFactory.Verify(x => x.CreateHelenApiInterface(It.IsAny<string>()));
+            moqFactory.HelenApi.Verify(x => x.GetApiId(settings.Name, It.IsAny<int>()));
+            moqFactory.HelenApi.Verify(x => x.GetBrokerUrl(It.IsAny<string>()));
             moqFactory.Verify(x => x.CreateMessenger(settings));
             moqFactory.Probe.VerifySet(x => x.MeasureInterval = settings.MeasureInterval);
             if (expectDisposals)
@@ -108,7 +110,7 @@ namespace DiscoverableMqtt.Tests
             moqFactory.Messenger.Verify(x => x.GetPublisher($"Rooms/{settings.Room}/Temperature", QosLevel.AtLeastOnce));
             moqFactory.Messenger.Verify(x => x.GetPublisher($"Devices/Configured/{settings.Name}", QosLevel.AtLeastOnce));
             moqFactory.Publisher.VerifySet(x => x.Retain = true);
-            moqFactory.Publisher.Verify(x => x.PublishWithoutHeader(It.IsAny<string>()));
+            moqFactory.Publisher.Verify(x => x.Publish(It.IsAny<string>()));
             if (expectDisposals)
             {
                 moqFactory.Listener.Verify(x => x.Dispose());

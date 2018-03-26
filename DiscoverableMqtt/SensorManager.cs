@@ -19,8 +19,9 @@ namespace DiscoverableMqtt
         public IMessengerPublisher ProbePublisher;
         public IMessengerPublisher ConfigPublisher;
         public IMessengerListener ConfigListener;
+        public IMessengerListener HelenApiLocationListener;
 
-        public SensorManager(AppSettings settings, IFactory factory = null, IHelenApiInterface helenApi = null)
+        public SensorManager(AppSettings settings, IFactory factory = null)
         {
             Settings = settings;
 
@@ -29,13 +30,7 @@ namespace DiscoverableMqtt
                 factory = new Factory();
             }
             Factory = factory;
-
-            if (helenApi == null)
-            {
-                helenApi = new HelenApiInterface();
-            }
-            HelenApi = helenApi;
-
+            
             Probe = Factory.CreateTempProbe(settings);
             Probe.DataChanged += Probe_DataChanged;
 
@@ -55,8 +50,11 @@ namespace DiscoverableMqtt
             {
                 Settings = settings;
             }
-            settings.ApiId = HelenApi.GetApiId(settings);
-            settings.BrokerUrl = HelenApi.GetBrokerUrl(settings);
+
+            HelenApi = Factory.CreateHelenApiInterface(settings.HelenApiUrl);
+
+            settings.ApiId = HelenApi.GetApiId(settings.Name, settings.ApiId);
+            settings.BrokerUrl = HelenApi.GetBrokerUrl(settings.BrokerUrl);
             capabilities.Settings = settings;
 
             Messenger = Factory.CreateMessenger(settings);
@@ -74,14 +72,28 @@ namespace DiscoverableMqtt
             ConfigPublisher?.Dispose();
             ConfigPublisher = Messenger.GetPublisher(ConfigTopic);
             ConfigPublisher.Retain = true;
-            Messenger.ConnectionStatusChanged += (s, e) => ConfigPublisher.PublishWithoutHeader(capabilities.Json);
+            Messenger.ConnectionStatusChanged += (s, e) => ConfigPublisher.Publish(capabilities.Json);
 
             ConfigListener?.Dispose();
             ConfigListener = Messenger.GetListener(DeviceConfigTopic);
             ConfigListener.MsgReceived += ConfigListener_MsgReceived;
 
+            HelenApiLocationListener?.Dispose();
+            HelenApiLocationListener = Messenger.GetListener(HelenApi.LocationMessageTopic);
+            HelenApiLocationListener.MsgReceived += HelenApiLocationListener_MsgReceived;
+
             ConsoleExtensions.WriteDebugLocationEnabled = settings.DebugMode;
             Messenger.Connect();
+        }
+
+        private void HelenApiLocationListener_MsgReceived(object sender, MsgReceivedEventArgs e)
+        {
+            var result = HelenApi.GetApiLocationFromMessage(e.Message);
+            if (result.HasValue && result.Value.apiId == Settings.ApiId)
+            {
+                Settings.Room = result.Value.deviceLocation;
+                UpdateFromSettings(Settings);
+            }
         }
 
         private void ConfigListener_MsgReceived(object sender, MsgReceivedEventArgs e)
@@ -100,11 +112,7 @@ namespace DiscoverableMqtt
         private void Probe_DataChanged(object sender, GenericEventArgs<float> e)
         {
             var data = e.Data.ToString();
-            if (!Messenger.IsConnected)
-            {
-                Messenger.Connect();
-            }
-            ProbePublisher?.Publish(data);
+            ProbePublisher?.Publish(HelenApi.CreateDataMessage(Settings.ApiId, data));
             ConsoleExtensions.WriteDebugLocation(data, 0);
             Messenger.PrintDebugInfo();
         }

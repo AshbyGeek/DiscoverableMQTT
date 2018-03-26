@@ -9,10 +9,11 @@ namespace DiscoverableMqtt.Tests.Fakes
     {
         public FakeHelenApiInterface()
         {
-            Setup(x => x.GetBrokerUrl(It.IsAny<AppSettings>()))
-                .Returns((AppSettings settings) => settings?.BrokerUrl ?? "");
-            Setup(x => x.GetApiId(It.IsAny<AppSettings>()))
-                .Returns((AppSettings settings) => settings?.ApiId ?? 0);
+            Setup(x => x.GetBrokerUrl(It.IsAny<string>()))
+                .Returns((string defaultVal) => defaultVal);
+            Setup(x => x.GetApiId(It.IsAny<string>(), It.IsAny<int>()))
+                .Returns((string name, int defaultVal) => defaultVal);
+            Setup(x => x.LocationMessageTopic).Returns("Linux/locationUpdates");
         }
     }
 }

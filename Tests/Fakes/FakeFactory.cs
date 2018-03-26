@@ -16,8 +16,10 @@ namespace DiscoverableMqtt.Tests.Fakes
                 Messenger.Publisher = new Mock<IMessengerPublisher>();
                 Client = new Mock<IMqttClientWrapper>();
                 Probe = new Mock<DiscoverableMqtt.Probes.IAbstractTempProbe>();
+                HelenApi = new FakeHelenApiInterface();
             }
 
+            // Use delegates so that the latest value of the properties below will be returned
             Setup(x => x.CreateMessenger(It.IsAny<AppSettings>()))
                 .Returns((AppSettings settings) => Messenger.Object);
             Setup(x => x.CreateMessengerListener(It.IsAny<IMqttClientWrapper>()))
@@ -28,6 +30,8 @@ namespace DiscoverableMqtt.Tests.Fakes
                 .Returns((string str) => Client.Object);
             Setup(x => x.CreateTempProbe(It.IsAny<AppSettings>()))
                 .Returns((AppSettings settings) => Probe.Object);
+            Setup(x => x.CreateHelenApiInterface(It.IsAny<string>()))
+                .Returns((string str) => HelenApi.Object);
 
             Listener.Setup(x => x.Dispose()).Raises(x => x.Disposed += null, EventArgs.Empty);
             Publisher.Setup(x => x.Dispose()).Raises(x => x.Disposed += null, EventArgs.Empty);
@@ -38,5 +42,6 @@ namespace DiscoverableMqtt.Tests.Fakes
         public Mock<IMessengerPublisher> Publisher => Messenger.Publisher;
         public Mock<IMqttClientWrapper> Client { get; set; }
         public Mock<DiscoverableMqtt.Probes.IAbstractTempProbe> Probe { get; set; }
+        public FakeHelenApiInterface HelenApi { get; set; }
     }
 }
