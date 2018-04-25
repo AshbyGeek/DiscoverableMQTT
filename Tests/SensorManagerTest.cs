@@ -20,7 +20,7 @@ namespace DiscoverableMqtt.Tests
             settings = new AppSettings()
             {
                 ApiId = 42,
-                ProbeTopic = "blah/Moreblah/what",
+                TemperatureTopic = "blah/Moreblah/what",
                 BrokerUrl = "hahahaha",
                 ProbeInterval = 31415,
             };
@@ -34,14 +34,14 @@ namespace DiscoverableMqtt.Tests
         {
             moqFactory.Verify(x => x.CreateTempProbe(settings));
             VerifyUpdateFromSettings(false, settings);
-            moqFactory.Probe.Verify(x => x.Start());
+            moqFactory.TemperatureProbe.Verify(x => x.Start());
         }
 
         [TestMethod]
         public void SensorManager_UpdateFromSettings()
         {
             settings.ApiId = 24;
-            settings.ProbeTopic = "tahw/halberoM/halb";
+            settings.TemperatureTopic = "tahw/halberoM/halb";
             settings.BrokerUrl = "ahahahah";
             settings.ProbeInterval = 53141;
 
@@ -53,7 +53,7 @@ namespace DiscoverableMqtt.Tests
         [TestMethod]
         public void SensorManager_ConfigListener_MsgReceived()
         {
-            var json = @"{'ProbeTopic':'bogus', 'BrokerUrl':'sugob'}";
+            var json = @"{'TemperatureTopic':'bogus', 'BrokerUrl':'sugob'}";
             var args = new MsgReceivedEventArgs()
             {
                 Message = json,
@@ -64,7 +64,7 @@ namespace DiscoverableMqtt.Tests
             };
             moqFactory.Listener.Raise(x => x.MsgReceived += null, (EventArgs)args);
 
-            Assert.AreEqual("bogus", settings.ProbeTopic);
+            Assert.AreEqual("bogus", settings.TemperatureTopic);
             Assert.AreEqual("sugob", settings.BrokerUrl);
             VerifyUpdateFromSettings(true, settings);
         }
@@ -72,11 +72,11 @@ namespace DiscoverableMqtt.Tests
         [DataTestMethod]
         [DataRow(false)]
         [DataRow(true)]
-        public void SensorManager_Probe_DataChanged(bool messengerIsConnected)
+        public void SensorManager_TemperatureProbe_DataChanged(bool messengerIsConnected)
         {
             moqFactory.Messenger.Setup(x => x.IsConnected).Returns(messengerIsConnected);
 
-            moqFactory.Probe.Raise(x => x.DataChanged += null, new GenericEventArgs<float>(15.5f));
+            moqFactory.TemperatureProbe.Raise(x => x.DataChanged += null, new GenericEventArgs<float>(15.5f));
 
             if (!messengerIsConnected)
             {
@@ -85,13 +85,29 @@ namespace DiscoverableMqtt.Tests
             moqFactory.Publisher.Verify(x => x.Publish((15.5f).ToString()));
         }
 
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public void SensorManager_MoistureProbe_DataChanged(bool messengerIsConnected)
+        {
+            moqFactory.Messenger.Setup(x => x.IsConnected).Returns(messengerIsConnected);
+
+            moqFactory.MoistureProbe.Raise(x => x.DataChanged += null, new GenericEventArgs<float>(0.75f));
+
+            if (!messengerIsConnected)
+            {
+                moqFactory.Messenger.Verify(x => x.Connect());
+            }
+            moqFactory.Publisher.Verify(x => x.Publish((0.75f).ToString()));
+        }
+
         [TestMethod]
         public void SensorManager_Dispose()
         {
             manager.Dispose();
 
             moqFactory.Publisher.Verify(x => x.Dispose());
-            moqFactory.Probe.Verify(x => x.Stop());
+            moqFactory.TemperatureProbe.Verify(x => x.Stop());
             moqFactory.Messenger.Verify(x => x.Disconnect());
         }
 
@@ -104,8 +120,8 @@ namespace DiscoverableMqtt.Tests
             {
                 moqFactory.Publisher.Verify(x => x.Dispose());
             }
-            moqFactory.Messenger.Verify(x => x.GetPublisher(settings.ProbeTopic, QosLevel.AtLeastOnce));
-            moqFactory.Probe.VerifySet(x => x.MeasureInterval = settings.ProbeInterval);
+            moqFactory.Messenger.Verify(x => x.GetPublisher(settings.TemperatureTopic, QosLevel.AtLeastOnce));
+            moqFactory.TemperatureProbe.VerifySet(x => x.MeasureInterval = settings.ProbeInterval);
             if (expectDisposals)
             {
                 moqFactory.Listener.Verify(x => x.Dispose());

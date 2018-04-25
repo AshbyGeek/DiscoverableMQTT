@@ -66,6 +66,6 @@ namespace DiscoverableMqtt
             Disposed?.Invoke(this, EventArgs.Empty);
         }
 
-        private string PacketHeader => Id.ToString() + " ";
+        private string PacketHeader => Id.ToString() + " - ";
     }
 }

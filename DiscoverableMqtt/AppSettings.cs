@@ -11,13 +11,14 @@ namespace DiscoverableMqtt
 {
     public class AppSettings
     {
-        public Guid Guid { get; set; } = new Guid();
+        public Guid Guid { get; set; } = Guid.NewGuid();
         public int ApiId { get; set; } = int.MinValue;
-        public string BrokerUrl { get; set; } = "";
-        public bool DebugMode { get; set; } = false;
+        public string BrokerUrl { get; set; } = "192.168.1.49";
+        public bool DebugMode { get; set; } = true;
         public string ProbeDeviceName { get; set; } = "";
         public int ProbeInterval { get; set; } = 500;
-        public string ProbeTopic { get; set; } = "test/linux";
+        public string TemperatureTopic { get; set; } = "test/linux/temperature";
+        public string MoistureTopic { get; set; } = "test/linux/soilMoisture";
         public string HelenApiUrl { get; set; } = "http://localhost:51412/api/";
 
         public string Name => $"DannyProbe{Guid:B}";
@@ -66,6 +67,10 @@ namespace DiscoverableMqtt
             {
                 filePath = FilePath;
             }
+            else
+            {
+                FilePath = filePath;
+            }
 
             try
             {
@@ -89,6 +94,10 @@ namespace DiscoverableMqtt
             {
                 filePath = FilePath;
             }
+            else
+            {
+                FilePath = filePath;
+            }
 
             try
             {
@@ -97,6 +106,7 @@ namespace DiscoverableMqtt
             catch (Exception ex)
             {
                 ConsoleExtensions.WriteLine($"Could not populate settings from {filePath}: {ex.Message}");
+                SaveSettings();
             }
         }
         #endregion

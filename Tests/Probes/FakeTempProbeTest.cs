@@ -9,12 +9,12 @@ namespace DiscoverableMqtt.Tests.Probes
     [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class FakeTempProbeTest
     {
-        private FakeTempProbe _probe;
+        private FakeNumericProbe _probe;
 
         [TestInitialize]
         public void TestInitialize()
         {
-            _probe = new FakeTempProbe();
+            _probe = new FakeNumericProbe(60.0f, 80.0f);
         }
 
         [TestCleanup]

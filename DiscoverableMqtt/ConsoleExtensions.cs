@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace DiscoverableMqtt
@@ -15,7 +16,13 @@ namespace DiscoverableMqtt
         {
             if (!WriteDebugLocationEnabled)
                 return;
-            
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                WriteLine(value);
+                return;
+            }
+
             lock (_ConsoleLock)
             {
                 var prevCursorLeft = Console.CursorLeft;
@@ -48,17 +55,31 @@ namespace DiscoverableMqtt
 
         public static void WriteLine(string value)
         {
-            lock (_ConsoleLock)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 Console.WriteLine(value);
+            }
+            else
+            {
+                lock (_ConsoleLock)
+                {
+                    Console.WriteLine(value);
+                }
             }
         }
 
         public static void Write(string value)
         {
-            lock (_ConsoleLock)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                Console.Write(value);
+                Console.WriteLine(value);
+            }
+            else
+            {
+                lock (_ConsoleLock)
+                {
+                   Console.Write(value);
+                }
             }
         }
     }

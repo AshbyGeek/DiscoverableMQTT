@@ -44,7 +44,8 @@ namespace DiscoverableMqtt
             }
             else if (input.Equals("help", StringComparison.InvariantCultureIgnoreCase))
             {
-                PrintOptions(settings);
+                bool showLinuxOptions = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+                PrintOptions(settings, showLinuxOptions);
             }
             else if (input.Equals("clear", StringComparison.InvariantCultureIgnoreCase))
             {
@@ -63,20 +64,23 @@ namespace DiscoverableMqtt
             else if (input.StartsWith("msg: "))
             {
                 var msg = input.Substring(4).Trim();
-                manager.ProbePublisher.Publish(msg);
+                manager.TempProbePublisher.Publish(msg);
             }
             else if (input.Equals("stop", StringComparison.InvariantCultureIgnoreCase))
             {
-                manager.Probe.Stop();
+                manager.TempProbe.Stop();
+                manager.MoistureProbe.Stop();
                 ConsoleExtensions.WriteDebugLocation("       ", 0);
+                ConsoleExtensions.WriteDebugLocation("       ", 1);
             }
             else if (input.Equals("start", StringComparison.InvariantCultureIgnoreCase))
             {
-                manager.Probe.Start();
+                manager.TempProbe.Start();
+                manager.MoistureProbe.Start();
             }
-            else if (input.Equals("list probes", StringComparison.InvariantCultureIgnoreCase) && manager.Probe is Probes.LinuxTempProbe)
+            else if (input.Equals("list probes", StringComparison.InvariantCultureIgnoreCase) && manager.TempProbe is Probes.LinuxTempProbe)
             {
-                var lprobe = manager.Probe as Probes.LinuxTempProbe;
+                var lprobe = manager.TempProbe as Probes.LinuxTempProbe;
                 foreach (var name in lprobe.GetOneWireDeviceNames())
                 {
                     ConsoleExtensions.WriteLine("  " + name);

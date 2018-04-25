@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DiscoverableMqtt.Tests
+namespace DiscoverableMqtt.Tests.Probes
 {
     [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class LinuxTempProbeTest

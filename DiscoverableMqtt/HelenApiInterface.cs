@@ -17,20 +17,20 @@ namespace DiscoverableMqtt
     public class HelenApiInterface : IHelenApiInterface
     {
         const int MAX_RETRIES = 3;
-        private static HttpClient client = new HttpClient();
+        private static HttpClient client;
 
         public string GetBrokerUrl(AppSettings settings)
         {
             try
             {
-                client.BaseAddress = new Uri(settings.HelenApiUrl);
+                RefreshClientIfUrlChanged(settings.HelenApiUrl);
 
                 HttpResponseMessage response;
                 int numTries = 0;
                 do
                 {
                     var route = "DeviceData/GetConnectionInfo/";
-                    route += HttpUtility.UrlEncode($"DannyProbe{settings.Guid:B}");
+                    //route += HttpUtility.UrlEncode($"DannyProbe{settings.Guid:B}");
                     response = client.GetAsync(route).Result;
                     if (numTries++ > MAX_RETRIES)
                     {
@@ -39,6 +39,7 @@ namespace DiscoverableMqtt
                 } while (!response.IsSuccessStatusCode);
 
                 var msg = response.Content.ReadAsStringAsync().Result;
+                msg = msg.Trim('\"', ' ');
                 return msg;
             }
             catch (Exception)
@@ -52,7 +53,7 @@ namespace DiscoverableMqtt
         {
             try
             {
-                client.BaseAddress = new Uri(settings.HelenApiUrl);
+                RefreshClientIfUrlChanged(settings.HelenApiUrl);
 
                 HttpResponseMessage response;
                 int numTries = 0;
@@ -68,10 +69,7 @@ namespace DiscoverableMqtt
                 } while (!response.IsSuccessStatusCode);
 
                 var msg = response.Content.ReadAsStringAsync().Result;
-                var indx1 = msg.IndexOf(':') + 1;
-                var indx2 = msg.IndexOf("Please", indx1);
-                var idStr = msg.Substring(indx1, indx2 - indx1).Trim();
-                var id = int.Parse(idStr);
+                var id = int.Parse(msg);
 
                 return id;
             }
@@ -79,6 +77,17 @@ namespace DiscoverableMqtt
             {
                 ConsoleExtensions.WriteLine("Failed to connect to Helen's API, falling back to the value in settings.");
                 return settings.ApiId;
+            }
+        }
+
+        private void RefreshClientIfUrlChanged(string url)
+        {
+            var baseAddress = new Uri(url);
+            if (client == null || client.BaseAddress != baseAddress)
+            {
+                client?.Dispose();
+                client = new HttpClient();
+                client.BaseAddress = baseAddress;
             }
         }
     }

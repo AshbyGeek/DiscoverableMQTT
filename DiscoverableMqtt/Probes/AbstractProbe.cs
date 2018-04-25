@@ -5,7 +5,7 @@ using System.Timers;
 
 namespace DiscoverableMqtt.Probes
 {
-    public interface IAbstractTempProbe
+    public interface IAbstractProbe : IDisposable
     {
         double MeasureInterval { get; set; }
         AppSettings Settings { get; set; }
@@ -17,7 +17,7 @@ namespace DiscoverableMqtt.Probes
         void Stop();
     }
 
-    public abstract class AbstractTempProbe : IAbstractTempProbe
+    public abstract class AbstractProbe : IAbstractProbe
     {
         /// <summary>
         /// Milliseconds between measurements
@@ -39,10 +39,10 @@ namespace DiscoverableMqtt.Probes
 
         public AppSettings Settings { get; set; }
 
-        public AbstractTempProbe()
+        public AbstractProbe()
         {
             _Timer.Elapsed += Timer_Elapsed;
-            GetNewVal();
+            //GetNewVal();
         }
 
         public virtual void Start()
@@ -86,6 +86,8 @@ namespace DiscoverableMqtt.Probes
         /// Implement this method to retrieve values from your temperature probe.
         /// Called ever time the time the timer interval elapses.
         /// </summary>
-        protected abstract float GetNewVal();
+        public abstract float GetNewVal();
+
+        public void Dispose() { }
     }
 }

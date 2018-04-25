@@ -2,13 +2,15 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using DiscoverableMqtt.Probes;
 
 namespace DiscoverableMqtt
 {
     public interface IFactory
     {
         IMqttClientWrapper CreateMqttClientWrapper(string brokerHostName);
-        Probes.IAbstractTempProbe CreateTempProbe(AppSettings settings);
+        IAbstractProbe CreateTempProbe(AppSettings settings);
+        IAbstractProbe CreateSoilMoistureProbe(AppSettings settings);
 
         IMessenger CreateMessenger(AppSettings settings);
         IMessengerListener CreateMessengerListener(IMqttClientWrapper client);
@@ -53,15 +55,28 @@ namespace DiscoverableMqtt
         }
 
         [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-        public Probes.IAbstractTempProbe CreateTempProbe(AppSettings settings)
+        public IAbstractProbe CreateTempProbe(AppSettings settings)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                return new Probes.LinuxTempProbe();
+                return new LinuxTempProbe();
             }
             else
             {
-                return new Probes.FakeTempProbe();
+                return new FakeNumericProbe(60.0f,80.0f);
+            }
+        }
+
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        public IAbstractProbe CreateSoilMoistureProbe(AppSettings settings)
+        {
+            if (RuntimeInformation.IsOSPlatform((OSPlatform.Linux)))
+            {
+                return new LinuxSoilMoistureProbe();
+            }
+            else
+            {
+                return new FakeNumericProbe(0,1);
             }
         }
     }

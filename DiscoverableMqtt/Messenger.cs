@@ -42,7 +42,14 @@ namespace DiscoverableMqtt
             Guid = settings.Guid;
             Factory = factory;
 
-            Client = Factory.CreateMqttClientWrapper(settings.BrokerUrl);
+            try
+            {
+                Client = Factory.CreateMqttClientWrapper(settings.BrokerUrl);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
         #endregion
         
@@ -81,23 +88,30 @@ namespace DiscoverableMqtt
         [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public void PrintDebugInfo()
         {
-            ConsoleExtensions.WriteDebugLocation($"Connected to broker: {IsConnected}", 1);
+            if (connectInProgress)
+            {
+                ConsoleExtensions.WriteDebugLocation($"Connected to broker: ...", 3);
+            }
+            else
+            {
+                ConsoleExtensions.WriteDebugLocation($"Connected to broker: {IsConnected}", 3);
+            }
         }
 
         public void Connect()
         {
             if (!IsConnected && !connectInProgress)
             {
+                connectInProgress = true;
                 Task.Run(() =>
                 {
-                    connectInProgress = true;
                     try
                     {
                         Client.Connect(Guid.ToString());
                     }
                     catch (Exception)
                     {
-                        ConsoleExtensions.WriteDebugLocation($"Connected to broker: failed", 1);
+                        ConsoleExtensions.WriteDebugLocation($"Connected to broker: failed", 5);
                     }
                     finally
                     {

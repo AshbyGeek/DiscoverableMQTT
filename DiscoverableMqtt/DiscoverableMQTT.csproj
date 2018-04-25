@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="M2MqttDotnetCore" Version="1.0.7" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
+    <PackageReference Include="Unosquare.Raspberry.IO" Version="0.14.0" />
     <PackageReference Include="Wdc.System.Net.Http.Formatting.NetStandard" Version="1.0.7" />
   </ItemGroup>
 

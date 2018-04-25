@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using DiscoverableMqtt.Probes;
 
 namespace DiscoverableMqtt.Tests.Fakes
 {
@@ -11,11 +12,14 @@ namespace DiscoverableMqtt.Tests.Fakes
         {
             if (useDefaults)
             {
-                Messenger = new FakeMessenger(false);
-                Messenger.Listener = new Mock<IMessengerListener>();
-                Messenger.Publisher = new Mock<IMessengerPublisher>();
+                Messenger = new FakeMessenger(false)
+                {
+                    Listener = new Mock<IMessengerListener>(),
+                    Publisher = new Mock<IMessengerPublisher>()
+                };
                 Client = new Mock<IMqttClientWrapper>();
-                Probe = new Mock<DiscoverableMqtt.Probes.IAbstractTempProbe>();
+                TemperatureProbe = new Mock<IAbstractProbe>();
+                MoistureProbe = new Mock<IAbstractProbe>();
             }
 
             Setup(x => x.CreateMessenger(It.IsAny<AppSettings>()))
@@ -27,7 +31,9 @@ namespace DiscoverableMqtt.Tests.Fakes
             Setup(x => x.CreateMqttClientWrapper(It.IsAny<string>()))
                 .Returns((string str) => Client.Object);
             Setup(x => x.CreateTempProbe(It.IsAny<AppSettings>()))
-                .Returns((AppSettings settings) => Probe.Object);
+                .Returns((AppSettings settings) => TemperatureProbe.Object);
+            Setup(x => x.CreateSoilMoistureProbe(It.IsAny<AppSettings>()))
+                .Returns((AppSettings settings) => MoistureProbe.Object);
 
             Listener.Setup(x => x.Dispose()).Raises(x => x.Disposed += null, EventArgs.Empty);
             Publisher.Setup(x => x.Dispose()).Raises(x => x.Disposed += null, EventArgs.Empty);
@@ -37,6 +43,7 @@ namespace DiscoverableMqtt.Tests.Fakes
         public Mock<IMessengerListener> Listener => Messenger.Listener;
         public Mock<IMessengerPublisher> Publisher => Messenger.Publisher;
         public Mock<IMqttClientWrapper> Client { get; set; }
-        public Mock<DiscoverableMqtt.Probes.IAbstractTempProbe> Probe { get; set; }
+        public Mock<IAbstractProbe> TemperatureProbe { get; set; }
+        public Mock<IAbstractProbe> MoistureProbe { get; set; }
     }
 }

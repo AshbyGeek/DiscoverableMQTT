@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 
-namespace DiscoverableMqtt.Tests.Probes
+namespace DiscoverableMqtt.Tests
 {
     [TestClass, System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     public class AppSettingsTest
@@ -69,7 +69,7 @@ namespace DiscoverableMqtt.Tests.Probes
                 ApiId = 12345566,
                 ProbeDeviceName = "sugob",
                 ProbeInterval = 5000,
-                ProbeTopic = "gnitset"
+                TemperatureTopic = "gnitset"
             };
             settings.ResetToDefaults();
 
@@ -79,7 +79,7 @@ namespace DiscoverableMqtt.Tests.Probes
             Assert.AreEqual(settings2.ApiId, settings.ApiId);
             Assert.AreEqual(settings2.ProbeDeviceName, settings.ProbeDeviceName);
             Assert.AreEqual(settings2.ProbeInterval, settings.ProbeInterval);
-            Assert.AreEqual(settings2.ProbeTopic, settings.ProbeTopic);
+            Assert.AreEqual(settings2.TemperatureTopic, settings.TemperatureTopic);
         }
 
         [TestMethod]

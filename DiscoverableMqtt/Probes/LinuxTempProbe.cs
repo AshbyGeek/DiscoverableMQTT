@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace DiscoverableMqtt.Probes
 {
-    public class LinuxTempProbe : AbstractTempProbe
+    public class LinuxTempProbe : AbstractProbe
     {
         /// <summary>
         /// The location where most linux distros keep their 1 wire devices
         /// Assuming, of course, that the distro has a 1 wire driver up and going
         /// </summary>
+        // ReSharper disable once InconsistentNaming
         private const string DFLT_1WIRE_DEVS_PATH = "/sys/bus/w1/devices";
 
         private const string W1_FILE_NAME = "w1_slave";
@@ -20,10 +20,6 @@ namespace DiscoverableMqtt.Probes
         /// The path where this class will look for potential one wire devices to read from
         /// </summary>
         public string OneWireDevicesPath { get; set; } = DFLT_1WIRE_DEVS_PATH;
-        
-        public LinuxTempProbe() : base()
-        {
-        }
 
         /// <summary>
         /// Gets a list of available one wire devices, so that a user might be able to pick one.
@@ -31,10 +27,9 @@ namespace DiscoverableMqtt.Probes
         /// <returns>a list of available 1 wire devices</returns>
         public IEnumerable<string> GetOneWireDeviceNames()
         {
-            IEnumerable<string> folders;
             try
             {
-                folders = Directory.EnumerateDirectories(OneWireDevicesPath);
+                var folders = Directory.EnumerateDirectories(OneWireDevicesPath);
                 var filteredFolders = folders.Select(f => Path.GetFileName(f)).Where(folder => !folder.Contains("bus_master") && File.Exists(Path.Combine(OneWireDevicesPath, folder, W1_FILE_NAME)));
                 return filteredFolders;
             }
@@ -49,7 +44,7 @@ namespace DiscoverableMqtt.Probes
 
         private string FilePath => Path.Combine(OneWireDevicesPath, OneWireDeviceName, W1_FILE_NAME);
         
-        protected override float GetNewVal()
+        public override float GetNewVal()
         {
             if (File.Exists(FilePath))
             {

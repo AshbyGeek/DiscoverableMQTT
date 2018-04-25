@@ -15,8 +15,11 @@ namespace DiscoverableMqtt
         public IHelenApiInterface HelenApi;
         public IMessenger Messenger;
 
-        public Probes.IAbstractTempProbe Probe;
-        public IMessengerPublisher ProbePublisher;
+        public Probes.IAbstractProbe TempProbe;
+        public IMessengerPublisher TempProbePublisher;
+
+        public Probes.IAbstractProbe MoistureProbe;
+        public IMessengerPublisher MoisturePublisher;
 
         public IMessengerListener ConfigListener;
 
@@ -36,15 +39,21 @@ namespace DiscoverableMqtt
             }
             HelenApi = helenApi;
 
-            Probe = Factory.CreateTempProbe(settings);
-            Probe.DataChanged += Probe_DataChanged;
+            TempProbe?.Dispose();
+            TempProbe = Factory.CreateTempProbe(settings);
+            TempProbe.DataChanged += TempProbe_DataChanged;
+
+            MoistureProbe?.Dispose();
+            MoistureProbe = Factory.CreateSoilMoistureProbe(settings);
+            MoistureProbe.DataChanged += MoistureProbe_DataChanged;
 
             UpdateFromSettings(settings);
 
             // Start the probe
-            Probe.Start();
+            TempProbe.Start();
+            MoistureProbe.Start();
         }
-        
+
         public void UpdateFromSettings(AppSettings settings = null)
         {
             if (settings == null)
@@ -60,15 +69,20 @@ namespace DiscoverableMqtt
 
             Messenger = Factory.CreateMessenger(settings);
 
-            ProbePublisher?.Dispose();
-            ProbePublisher = Messenger.GetPublisher(settings.ProbeTopic);
-
-            Probe.MeasureInterval = settings.ProbeInterval;
-            if (Probe is Probes.LinuxTempProbe)
+            // Set up temperature measurements and publishing
+            TempProbePublisher?.Dispose();
+            TempProbePublisher = Messenger.GetPublisher(settings.TemperatureTopic);
+            TempProbe.MeasureInterval = settings.ProbeInterval;
+            if (TempProbe is Probes.LinuxTempProbe)
             {
-                var lprobe = Probe as Probes.LinuxTempProbe;
+                var lprobe = TempProbe as Probes.LinuxTempProbe;
                 lprobe.OneWireDeviceName = settings.ProbeDeviceName;
             }
+
+            // Set up soil moisture measurements and publishing
+            MoisturePublisher?.Dispose();
+            MoisturePublisher = Messenger.GetPublisher(settings.MoistureTopic);
+            MoistureProbe.MeasureInterval = settings.ProbeInterval;
 
             ConfigListener?.Dispose();
             ConfigListener = Messenger.GetListener("DeviceConfig/" + settings.Name);
@@ -85,20 +99,36 @@ namespace DiscoverableMqtt
 
         public void Dispose()
         {
-            ProbePublisher?.Dispose();
-            Probe.Stop();
+            TempProbePublisher?.Dispose();
+            TempProbe?.Stop();
+            TempProbe?.Dispose();
+            MoisturePublisher?.Dispose();
+            MoistureProbe?.Stop();
+            MoistureProbe?.Dispose();
             Messenger.Disconnect();
         }
 
-        private void Probe_DataChanged(object sender, GenericEventArgs<float> e)
+        private void TempProbe_DataChanged(object sender, GenericEventArgs<float> e)
         {
             var data = e.Data.ToString();
             if (!Messenger.IsConnected)
             {
                 Messenger.Connect();
             }
-            ProbePublisher?.Publish(data);
+            TempProbePublisher?.Publish(data);
             ConsoleExtensions.WriteDebugLocation(data, 0);
+            Messenger.PrintDebugInfo();
+        }
+
+        private void MoistureProbe_DataChanged(object sender, GenericEventArgs<float> e)
+        {
+            var data = e.Data.ToString();
+            if (!Messenger.IsConnected)
+            {
+                Messenger.Connect();
+            }
+            MoisturePublisher?.Publish(data);
+            ConsoleExtensions.WriteDebugLocation(data, 1);
             Messenger.PrintDebugInfo();
         }
     }
