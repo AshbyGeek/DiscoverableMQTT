@@ -30,14 +30,14 @@ namespace DiscoverableMqtt
                 while (continueLooping)
                 {
                     ConsoleExtensions.Write(">");
-                    continueLooping = HandleInput(settings, sensorManager);
+                    var input = Console.ReadLine();
+                    continueLooping = HandleInput(input, settings, sensorManager);
                 }
             }
         }
 
-        private static bool HandleInput(AppSettings settings, SensorManager manager)
+        private static bool HandleInput(string input, AppSettings settings, SensorManager manager)
         {
-            string input = Console.ReadLine();
             if (input.Equals("exit", StringComparison.InvariantCultureIgnoreCase))
             {
                 return false;

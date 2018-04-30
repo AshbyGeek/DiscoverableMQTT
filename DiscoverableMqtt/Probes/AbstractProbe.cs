@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Monitor = System.Threading.Monitor;
 using System.Timers;
 
 namespace DiscoverableMqtt.Probes
@@ -70,15 +71,24 @@ namespace DiscoverableMqtt.Probes
         /// <param name="e"></param>
         protected virtual void Timer_Elapsed(object sender, EventArgs e)
         {
-            lock (timerLock)
+            // Attempt to get a lock. If somebody else already has the lock, then we just exit.
+            if (Monitor.TryEnter(timerLock))
             {
-                var prevEnabled = _Timer.Enabled;
-                _Timer.Stop();
+                try
+                {
+                    var prevEnabled = _Timer.Enabled;
+                    _Timer.Stop();
 
-                _CurVal = GetNewVal();
-                DataChanged?.Invoke(this, new GenericEventArgs<float>(_CurVal));
+                    _CurVal = GetNewVal();
+                    DataChanged?.Invoke(this, new GenericEventArgs<float>(_CurVal));
 
-                _Timer.Enabled = prevEnabled;
+                    _Timer.Enabled = prevEnabled;
+                }
+                finally
+                {
+                    // We must never, under any circumstances, forget to release the lock
+                    Monitor.Exit(timerLock);
+                }
             }
         }
 

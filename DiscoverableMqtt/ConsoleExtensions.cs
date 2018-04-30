@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DiscoverableMqtt
 {
@@ -17,9 +21,13 @@ namespace DiscoverableMqtt
             if (!WriteDebugLocationEnabled)
                 return;
 
+            // Using Console.CursorLeft blocks until no other threads are waiting
+            // for read calls or writing, which is problematical since the
+            // main thread is always waiting for user input. 
+            // So for now we just skip writing debug info entirely on linux
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                WriteLine(value);
+                //WriteLine(value);
                 return;
             }
 
@@ -55,31 +63,17 @@ namespace DiscoverableMqtt
 
         public static void WriteLine(string value)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            lock (_ConsoleLock)
             {
                 Console.WriteLine(value);
-            }
-            else
-            {
-                lock (_ConsoleLock)
-                {
-                    Console.WriteLine(value);
-                }
             }
         }
 
         public static void Write(string value)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            lock (_ConsoleLock)
             {
-                Console.WriteLine(value);
-            }
-            else
-            {
-                lock (_ConsoleLock)
-                {
-                   Console.Write(value);
-                }
+                Console.Write(value);
             }
         }
     }
